@@ -4,10 +4,8 @@ import { Loader2, Calendar, Shield, ChevronRight, CheckCircle, Zap } from 'lucid
 import emailjs from '@emailjs/browser';
 import { saveLead } from '../lib/mockApi';
 import { analytics } from '../lib/analytics';
-import { generateAuditReport, AuditReport } from '../lib/gemini';
 import { Link as ScrollLink } from 'react-scroll';
 import { SectionId } from '../types';
-import CorrectionDocument from './CorrectionDocument';
 
 const TypewriterLabel: React.FC<{ text: string }> = ({ text }) => {
   const [displayed, setDisplayed] = useState('');
@@ -28,12 +26,10 @@ const AuditForm: React.FC = () => {
   const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [report, setReport] = useState<AuditReport | null>(null);
-  const [showFullReport, setShowFullReport] = useState(false);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   
-  const loadingMessages = ["Syncing...", "Analyzing Logic...", "Generating Audit...", "Finalizing..."];
+  const loadingMessages = ["Syncing...", "Establishing Connection...", "Logging Parameters...", "Finalizing..."];
 
   useEffect(() => {
     if (isProcessing) {
@@ -70,12 +66,10 @@ const AuditForm: React.FC = () => {
   const handleReset = () => {
     setStep(1);
     setIsSuccess(false);
-    setReport(null);
-    setShowFullReport(false);
     setFormData({ website: '', email: '', phone: '', budget: '', blocker: '' });
   };
 
-  const sendEmailNotification = async (auditData?: AuditReport) => {
+  const sendEmailNotification = async () => {
     const SERVICE_ID = process.env.EMAILJS_SERVICE_ID; 
     const TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID; 
     const PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY; 
@@ -84,10 +78,10 @@ const AuditForm: React.FC = () => {
 
     try {
       await emailjs.send(SERVICE_ID, TEMPLATE_ID, {
-        title: "Forensic Audit Logged",
+        title: "Forensic Audit Requested",
         name: formData.website, 
         time: new Date().toLocaleString(), 
-        message: `AUDIT_LOG\nDomain: ${formData.website}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nBudget: ${formData.budget}\nProblem: ${formData.blocker}\nID: ${sessionID}\nAI_SCORE: ${auditData?.score || 'N/A'}` 
+        message: `AUDIT_REQUEST\nDomain: ${formData.website}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nBudget: ${formData.budget}\nProblem: ${formData.blocker}\nID: ${sessionID}` 
       }, PUBLIC_KEY);
     } catch (error) {
       console.error('Email Relay Error:', error);
@@ -100,10 +94,6 @@ const AuditForm: React.FC = () => {
       if (escalated) analytics.logHandshake('whatsapp');
       analytics.setSubmitted();
 
-      // Trigger AI Audit Generation in Parallel
-      const aiReport = await generateAuditReport(formData.website, formData.blocker);
-      setReport(aiReport);
-
       await Promise.all([
         saveLead({
           session_id: sessionID,
@@ -114,30 +104,22 @@ const AuditForm: React.FC = () => {
           core_problem: formData.blocker,
           cta_source: 'website_audit_form'
         }),
-        sendEmailNotification(aiReport)
+        sendEmailNotification()
       ]);
       
       if (escalated) {
-        const message = `I just requested a website audit for ${formData.website}. Let's chat.`;
+        const message = `I just requested a website audit for ${formData.website}. Let's chat about the bottlenecks.`;
         window.open(`https://wa.me/2347039723596?text=${encodeURIComponent(message)}`, '_blank');
       }
 
       setIsProcessing(false);
       setIsSuccess(true);
     } catch (e) {
-      console.error("Audit Engine Failure:", e);
+      console.error("Audit Submission Failure:", e);
       setIsProcessing(false);
       setIsSuccess(true);
     }
   };
-
-  if (showFullReport && report) {
-    return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-sm">
-        <CorrectionDocument report={report} url={formData.website} onClose={() => setShowFullReport(false)} />
-      </div>
-    );
-  }
 
   if (isSuccess) {
     return (
@@ -145,17 +127,20 @@ const AuditForm: React.FC = () => {
         <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white mx-auto mb-2">
           <CheckCircle size={28} />
         </div>
-        <h3 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter">SUBMISSION SECURED</h3>
-        <p className="text-slate-400 font-medium text-xs md:text-base leading-tight">Your AI-generated forensic audit for <span className="text-white">{formData.website}</span> is ready.</p>
+        <h3 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter">DATA TRANSMISSION SECURED</h3>
+        <p className="text-slate-400 font-medium text-xs md:text-base leading-tight">
+          Your URL <span className="text-white">({formData.website})</span> is being reviewed by our engineering team. 
+          We are currently analyzing your conversion logic for immediate improvements.
+        </p>
         
         <div className="flex flex-col gap-3 mt-4">
-          <button onClick={() => setShowFullReport(true)} className="w-full py-4 bg-sunset text-white rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2 shadow-lg">
-            VIEW FORENSIC REPORT
-          </button>
-          <ScrollLink to={SectionId.Booking} smooth={true} offset={-100} className="w-full py-4 bg-white text-midnight rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2 cursor-pointer shadow-lg">
+          <ScrollLink to={SectionId.Booking} smooth={true} offset={-100} className="w-full py-4 bg-sunset text-white rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2 cursor-pointer shadow-lg hover:brightness-110 transition-all">
             <Calendar size={18} /> BOOK PRIORITY DEBRIEF
           </ScrollLink>
-          <button onClick={handleReset} className="w-full py-3 text-slate-500 font-black uppercase text-[9px] tracking-widest">START NEW SESSION</button>
+          <button onClick={handleReset} className="w-full py-4 bg-white/5 border border-white/10 text-white rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-white/10 transition-all">
+            START NEW DEBRIEF
+          </button>
+          <button onClick={handleReset} className="w-full py-3 text-slate-500 font-black uppercase text-[9px] tracking-widest hover:text-slate-300 transition-colors">END SESSION</button>
         </div>
       </motion.div>
     );
@@ -184,8 +169,8 @@ const AuditForm: React.FC = () => {
           ) : step === 6 ? (
             <motion.div key="noted" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-center">
               <div className="flex flex-col items-center gap-4">
-                <h2 className="text-2xl md:text-5xl font-black text-white uppercase tracking-tighter leading-none">REQUEST NOTED.<br/><span className="text-sunset">AUDIT ONGOING.</span></h2>
-                <p className="text-slate-500 font-medium text-xs md:text-base max-w-xs mx-auto leading-relaxed">Engine active. Select dispatch preference to finalize the handshake.</p>
+                <h2 className="text-2xl md:text-5xl font-black text-white uppercase tracking-tighter leading-none">REQUEST NOTED.<br/><span className="text-sunset">ANALYTICS ACTIVE.</span></h2>
+                <p className="text-slate-500 font-medium text-xs md:text-base max-w-xs mx-auto leading-relaxed">System engaged. Select dispatch preference to initiate the audit review.</p>
               </div>
               <button onClick={() => setStep(7)} className="w-full py-5 bg-white text-midnight rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl hover:bg-sunset hover:text-white transition-all">CONTINUE <ChevronRight size={18} /></button>
             </motion.div>
