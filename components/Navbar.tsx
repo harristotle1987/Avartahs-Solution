@@ -87,7 +87,8 @@ const Navbar: React.FC = () => {
           <div className="w-2 h-2 bg-sunset rounded-full group-hover:animate-ping" />
         </div>
 
-        <div className="hidden lg:flex items-center gap-6 xl:gap-10 absolute left-1/2 -translate-x-1/2">
+        {/* Desktop & Tablet Links (Visible from md breakpoint upwards) */}
+        <div className="hidden md:flex items-center gap-4 xl:gap-10 absolute left-1/2 -translate-x-1/2">
           {navLinks.map((link) => (
             <ScrollLink
               key={link.to}
@@ -104,7 +105,7 @@ const Navbar: React.FC = () => {
         <div className="flex items-center gap-3 shrink-0">
           <ThemeToggle />
           
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3">
             <a 
               href={whatsappUrl}
               target="_blank"
@@ -127,8 +128,9 @@ const Navbar: React.FC = () => {
             </ScrollLink>
           </div>
 
+          {/* Mobile Menu Toggle (Visible ONLY on mobile, hidden from md breakpoint upwards) */}
           <button 
-            className="lg:hidden p-2 text-slate-900 dark:text-white bg-white dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 transition-all ml-1"
+            className="md:hidden p-2 text-slate-900 dark:text-white bg-white dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 transition-all ml-1"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -142,7 +144,7 @@ const Navbar: React.FC = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 w-screen h-screen lg:hidden bg-white dark:bg-[#020617] z-[125] flex flex-col pt-24 pb-12 px-8"
+            className="fixed inset-0 w-screen h-screen md:hidden bg-white dark:bg-[#020617] z-[125] flex flex-col pt-24 pb-12 px-8"
           >
             <div className="flex flex-col items-center justify-center space-y-8 flex-1">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Laboratory Directory</span>
