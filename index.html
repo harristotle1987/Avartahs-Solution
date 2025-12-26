@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avartah Solutions | Engineered Revenue Systems</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23020617'/%3E%3Cpath d='M30 70 L50 25 L70 70 M38 55 L62 55' stroke='%23F97316' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3Ccircle cx='70' cy='30' r='8' fill='%233B82F6'/%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="globals.css">
+    <script>
+      // Shim process.env for browser compatibility
+      window.process = { env: {} };
+      
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              midnight: '#0F172A',
+              electric: '#3B82F6',
+              sunset: '#F97316',
+              offwhite: '#F8FAFC',
+              background: '#F8FAFC',
+              foreground: '#0F172A',
+              muted: '#64748B',
+              border: '#E2E8F0',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            boxShadow: {
+              'lab': '0 20px 50px -12px rgba(15, 23, 42, 0.08)',
+              'lab-inner': 'inset 0 2px 4px 0 rgba(15, 23, 42, 0.05)',
+            }
+          }
+        }
+      }
+    </script>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react/": "https://esm.sh/react@19.0.0/",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "framer-motion": "https://esm.sh/framer-motion@11.11.17?external=react,react-dom",
+    "react-router-dom": "https://esm.sh/react-router-dom@7.1.0?external=react,react-dom",
+    "lucide-react": "https://esm.sh/lucide-react@0.454.0?external=react,react-dom",
+    "react-scroll": "https://esm.sh/react-scroll@1.9.3?external=react,react-dom",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.0",
+    "express": "https://esm.sh/express@^5.2.1",
+    "cors": "https://esm.sh/cors@^2.8.5",
+    "body-parser": "https://esm.sh/body-parser@^2.2.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@emailjs/browser": "https://esm.sh/@emailjs/browser@4.4.1"
+  }
+}
+</script>
+</head>
+<body class="bg-[#F8FAFC] text-[#0F172A] antialiased selection:bg-sunset/10 selection:text-sunset">
+    <div id="root"></div>
+</body>
+</html>
