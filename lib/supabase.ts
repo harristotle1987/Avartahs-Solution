@@ -1,10 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Hardcoded credentials for Avartah Solutions live instance
-export const supabaseUrl = 'https://wyvgrmedubzooqmrorxb.supabase.co';
-export const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5dmdybWVkdWJ6b29xbXJvcnhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3NDM0ODcsImV4cCI6MjA4MjMxOTQ4N30.6Uyxvh04Izzdz2-xo4cqQuX-9mxK5tuFmrDAiZ4ZJgU';
+// Credentials are now strictly fetched from environment variables.
+// In development, ensure your .env file is populated.
+// In Vercel, add these to the Project Environment Variables.
+export const supabaseUrl = process.env.SUPABASE_URL || '';
+export const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 
-// Configuration check
-export const isSupabaseConfigured = true;
+// Logic to prevent the app from crashing if variables are missing
+export const isSupabaseConfigured = !!supabaseUrl && !!supabaseAnonKey;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Initialization
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co', 
+  supabaseAnonKey || 'placeholder'
+);

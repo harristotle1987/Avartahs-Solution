@@ -40,19 +40,22 @@ const BookingCalendar: React.FC = () => {
   };
 
   const sendBookingEmail = async () => {
-    const SERVICE_ID = 'service_p8nzc1e'; 
-    const TEMPLATE_ID = 'template_0z3an7z'; 
-    const PUBLIC_KEY = 'DWkUt3MKWHqHToy7Q'; 
+    // Environment variables strictly enforced
+    const SERVICE_ID = process.env.EMAILJS_SERVICE_ID; 
+    const TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID; 
+    const PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY; 
+
+    if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY) return;
 
     try {
       await emailjs.send(SERVICE_ID, TEMPLATE_ID, {
-        title: "Strategy Session Booking",
+        title: "Session Booked",
         name: email,
         time: new Date().toLocaleString(),
-        message: `STRATEGY CALL BOOKED.\n\nDate: ${selectedDate?.toLocaleDateString()}\nTime Slot: ${selectedTime}\nEmail: ${email}\nSession: ${sessionID}`
+        message: `Date: ${selectedDate?.toLocaleDateString()}\nTime: ${selectedTime}\nEmail: ${email}\nID: ${sessionID}`
       }, PUBLIC_KEY);
     } catch (error) {
-      console.error('EmailJS Error:', error);
+      console.error('Email Error:', error);
     }
   };
 
@@ -81,35 +84,37 @@ const BookingCalendar: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-[#1e293b]/80 rounded-[1.5rem] md:rounded-[2.5rem] shadow-lab overflow-hidden border border-slate-200 dark:border-white/10 text-midnight dark:text-gray-100 w-full max-w-lg relative min-h-[480px] flex flex-col font-mono"
+      className="bg-white dark:bg-[#1e293b]/90 rounded-[1.5rem] md:rounded-[2.5rem] shadow-lab overflow-hidden border border-slate-200 dark:border-white/10 text-midnight dark:text-gray-100 w-full max-w-lg relative min-h-[440px] flex flex-col font-mono"
     >
       <AnimatePresence mode="wait">
         {step === 'datetime' ? (
           <motion.div key="datetime" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-5 md:p-8 flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex flex-col">
-                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Select Date</span>
-                <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter">{months[currentMonth]} {currentYear}</h3>
-              </div>
-              <div className="flex gap-1 md:gap-2">
-                <button onClick={() => handleMonthShift(-1)} className="p-2 border border-slate-100 rounded-lg hover:bg-slate-50"><ChevronLeft size={16} /></button>
-                <button onClick={() => handleMonthShift(1)} className="p-2 border border-slate-100 rounded-lg hover:bg-slate-50"><ChevronRight size={16} /></button>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm md:text-xl font-black uppercase tracking-tighter text-midnight dark:text-white">{months[currentMonth]} {currentYear}</h3>
+              <div className="flex gap-1">
+                <button onClick={() => handleMonthShift(-1)} className="p-1.5 border border-slate-100 dark:border-white/10 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"><ChevronLeft size={16} /></button>
+                <button onClick={() => handleMonthShift(1)} className="p-1.5 border border-slate-100 dark:border-white/10 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"><ChevronRight size={16} /></button>
               </div>
             </div>
 
-            <div className="grid grid-cols-7 mb-2">
-              {days.map((day, i) => (
-                <div key={i} className="text-[8px] font-black text-slate-300 text-center">{day}</div>
-              ))}
+            <div className="grid grid-cols-7 mb-2 text-center text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest">
+              {days.map((day, i) => <div key={i}>{day}</div>)}
             </div>
 
-            <div className="grid grid-cols-7 gap-1 flex-1">
+            <div className="grid grid-cols-7 gap-1 mb-4">
               {calendarGrid.map((day, idx) => {
                 const isSelected = day && selectedDate?.getDate() === day && selectedDate?.getMonth() === currentMonth;
                 return (
                   <div key={idx} className="aspect-square">
                     {day ? (
-                      <button onClick={() => setSelectedDate(new Date(currentYear, currentMonth, day))} className={`w-full h-full rounded-md text-[10px] md:text-xs font-black transition-all ${isSelected ? 'bg-sunset text-white' : 'text-midnight hover:bg-slate-50'}`}>
+                      <button 
+                        onClick={() => setSelectedDate(new Date(currentYear, currentMonth, day))} 
+                        className={`w-full h-full rounded-md text-[10px] font-black transition-all ${
+                          isSelected 
+                            ? 'bg-sunset text-white shadow-lg' 
+                            : 'text-midnight dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10'
+                        }`}
+                      >
                         {day}
                       </button>
                     ) : null}
@@ -119,11 +124,19 @@ const BookingCalendar: React.FC = () => {
             </div>
 
             {selectedDate && (
-              <div className="mt-6 space-y-2">
-                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">Available Slots</span>
+              <div className="mt-2 space-y-2">
+                <span className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">Available Slots</span>
                 <div className="grid grid-cols-2 gap-2">
                   {timeSlots.map(time => (
-                    <button key={time} onClick={() => setSelectedTime(time)} className={`px-3 py-2 rounded-lg text-[9px] font-black transition-all ${selectedTime === time ? 'bg-midnight text-white' : 'bg-slate-50 text-slate-400'}`}>
+                    <button 
+                      key={time} 
+                      onClick={() => setSelectedTime(time)} 
+                      className={`px-2 py-2 rounded-lg text-[9px] font-black transition-all ${
+                        selectedTime === time 
+                          ? 'bg-midnight dark:bg-white text-white dark:text-midnight shadow-md' 
+                          : 'bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-400 hover:text-midnight dark:hover:text-white'
+                      }`}
+                    >
                       {time}
                     </button>
                   ))}
@@ -131,24 +144,42 @@ const BookingCalendar: React.FC = () => {
               </div>
             )}
 
-            <button disabled={!selectedDate || !selectedTime} onClick={handleProceedToEmail} className="mt-6 w-full py-4 bg-midnight text-white rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-10 flex items-center justify-center gap-2">
+            <button 
+              disabled={!selectedDate || !selectedTime} 
+              onClick={handleProceedToEmail} 
+              className="mt-auto w-full py-4 bg-midnight dark:bg-white text-white dark:text-midnight rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-20 flex items-center justify-center gap-2 hover:bg-sunset dark:hover:bg-sunset dark:hover:text-white transition-all shadow-xl"
+            >
               PROCEED <ArrowRight size={14} />
             </button>
           </motion.div>
         ) : step === 'email' ? (
-          <motion.div key="email" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="p-8 md:p-12 flex-1 flex flex-col justify-center">
-            <h3 className="text-xl md:text-2xl font-black text-midnight uppercase tracking-tighter mb-6">Enter Email Address</h3>
-            <input type="email" placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-slate-50 border-b-2 border-slate-200 focus:border-sunset py-4 outline-none font-black text-lg mb-8" />
-            <button onClick={handleFinalize} className="w-full py-5 bg-sunset text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
-              {isTransmitting ? <Loader2 size={16} className="animate-spin" /> : 'CONFIRM SESSION'}
+          <motion.div key="email" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="p-6 md:p-12 flex-1 flex flex-col justify-center">
+            <h3 className="text-lg md:text-2xl font-black text-midnight dark:text-white uppercase tracking-tighter mb-4">Confirmation Email</h3>
+            <input 
+              type="email" 
+              placeholder="name@company.com" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              className="w-full bg-slate-50 dark:bg-white/5 border-b-2 border-slate-200 dark:border-white/10 focus:border-sunset py-3 outline-none font-black text-base mb-6 text-midnight dark:text-white transition-all" 
+            />
+            <button 
+              onClick={handleFinalize} 
+              className="w-full py-5 bg-sunset text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl hover:brightness-110 transition-all"
+            >
+              {isTransmitting ? <Loader2 size={16} className="animate-spin" /> : 'BOOK SESSION'}
             </button>
           </motion.div>
         ) : (
-          <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-8 md:p-12 text-center flex-1 flex flex-col items-center justify-center">
-            <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-6"><CheckCircle2 size={32} /></div>
-            <h3 className="text-2xl font-black text-midnight uppercase tracking-tighter mb-4">Confirmed</h3>
-            <p className="text-slate-400 mb-8 text-xs font-medium">Session scheduled for <span className="text-midnight font-black">{selectedTime}</span>. Confirmation sent to {email}.</p>
-            <button onClick={() => setStep('datetime')} className="w-full py-4 bg-slate-50 text-midnight rounded-xl font-black uppercase text-[10px] tracking-widest">RETURN</button>
+          <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-6 md:p-12 text-center flex-1 flex flex-col items-center justify-center">
+            <div className="w-12 h-12 bg-green-50 dark:bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mb-4"><CheckCircle2 size={24} /></div>
+            <h3 className="text-xl font-black text-midnight dark:text-white uppercase tracking-tighter mb-2">Confirmed</h3>
+            <p className="text-slate-400 dark:text-slate-500 text-[10px] mb-6 font-medium">Session set for {selectedTime}. Confirmation dispatched to {email}.</p>
+            <button 
+              onClick={() => setStep('datetime')} 
+              className="w-full py-4 bg-slate-50 dark:bg-white/5 text-midnight dark:text-white border border-transparent dark:border-white/10 rounded-xl font-black uppercase text-[10px] hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+            >
+              DONE
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
