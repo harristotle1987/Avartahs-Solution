@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Linkedin, Twitter, ArrowUpRight, ShieldCheck, Globe, Zap, HardDrive, MessageSquare } from 'lucide-react';
+import { Mail, Linkedin, Twitter, ArrowUpRight, ShieldCheck, Globe, Zap, HardDrive, MessageSquare, Lock } from 'lucide-react';
 import { Link as ScrollLink } from 'react-scroll';
 import { Link } from 'react-router-dom';
 import { SectionId } from '../types';
@@ -92,9 +92,12 @@ const Footer: React.FC = () => {
         
         <div className="flex flex-col md:flex-row justify-between items-center text-slate-600 text-[8px] font-black tracking-[0.4em] uppercase gap-6 py-4">
           <p>© {currentYear} AVARTAH SOLUTIONS. ALL PROTOCOLS RESERVED.</p>
-          <div className="flex gap-10">
+          <div className="flex items-center gap-10">
             <Link to="/privacy" className="hover:text-sunset transition-colors">Privacy</Link>
             <Link to="/terms" className="hover:text-sunset transition-colors">Terms</Link>
+            <Link to="/admin" className="flex items-center gap-1.5 hover:text-sunset transition-colors opacity-40 hover:opacity-100">
+              <Lock size={10} /> Admin
+            </Link>
           </div>
         </div>
       </div>

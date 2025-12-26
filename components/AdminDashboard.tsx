@@ -11,34 +11,18 @@ import {
   CheckCircle2,
   BarChart3,
   History,
+  ShieldAlert,
   Zap,
   ChevronDown,
   ChevronUp,
   ExternalLink,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Lead, SiteAnalytics } from '../types';
 import { getLeads, updateLeadStatus, getAnalytics, deleteLead } from '../lib/mockApi';
 import { isAuthenticated, logout } from '../lib/auth';
-
-// Internal Loader Component for the Dashboard
-const Loader2: React.FC<{ className?: string; size?: number }> = ({ className, size = 24 }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={`${className} animate-spin`}
-  >
-    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-  </svg>
-);
 
 const WeeklySummary: React.FC<{ data: SiteAnalytics[]; leads: Lead[] }> = ({ data, leads }) => {
   const stats = useMemo(() => {
@@ -326,9 +310,9 @@ const AdminDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center font-mono text-midnight">
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center font-mono">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="text-electric" size={40} />
+          <Loader2 className="animate-spin text-electric" size={32} />
           <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Initializing Ops Ledger...</span>
         </div>
       </div>
