@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
-import { FileSearch, Workflow, Layers, Activity } from 'lucide-react';
+// Added Terminal to imports to fix error on line 144
+import { FileSearch, Workflow, Layers, Activity, Terminal } from 'lucide-react';
 
 const steps = [
   { 
@@ -56,22 +57,19 @@ const steps = [
 const Process: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Refined scroll tracking for better sensitivity - covers entry and exit
   const { scrollYProgress } = useScroll({ 
     target: containerRef, 
     offset: ["start 0.8", "end 0.2"] 
   });
 
-  // Snappier spring configuration for responsive visual feedback
   const springConfig = { stiffness: 100, damping: 30, restDelta: 0.001 };
   const smoothProgress = useSpring(scrollYProgress, springConfig);
   
-  // Transform progress into height and position for the "active" line
   const lineHeight = useTransform(smoothProgress, [0, 1], ["0%", "100%"]);
   const orbPos = useTransform(smoothProgress, [0, 1], ["0%", "100%"]);
 
   return (
-    <div ref={containerRef} className="relative py-12 md:py-24 px-6 overflow-hidden bg-transparent">
+    <div ref={containerRef} className="relative py-12 md:py-32 px-6 overflow-hidden bg-transparent">
       <div className="absolute inset-0 pointer-events-none select-none overflow-hidden -z-10">
         <div className="absolute top-[10%] right-[5%] text-[8px] font-mono text-slate-400 opacity-10 dark:opacity-[0.05] whitespace-pre-wrap leading-tight rotate-12">
           {`SELECT * FROM growth_metrics\nWHERE conversion_rate < optimal_threshold;`}
@@ -79,34 +77,30 @@ const Process: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto relative">
-        {/* Background static track line (Gray) */}
         <div className="absolute left-6 md:left-8 top-0 bottom-0 w-[2px] bg-slate-200 dark:bg-white/5 rounded-full" />
         
-        {/* Dynamic progress fill line (Orange) */}
         <motion.div 
           style={{ height: lineHeight }} 
-          className="absolute left-6 md:left-8 top-0 w-[4px] bg-sunset origin-top z-10 rounded-full shadow-[0_0_15px_rgba(249,115,22,0.4)]" 
+          className="absolute left-6 md:left-8 top-0 w-[4px] bg-sunset origin-top z-10 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.4)]" 
         />
 
-        {/* Dynamic tracking orb - Following the scroll path */}
         <motion.div
           style={{ top: orbPos }}
-          className="absolute left-6 md:left-8 w-6 h-6 bg-sunset rounded-full -translate-x-1/2 -translate-y-1/2 z-20 shadow-[0_0_25px_rgba(249,115,22,1)] border-4 border-white dark:border-midnight"
+          className="absolute left-6 md:left-8 w-6 h-6 bg-sunset rounded-full -translate-x-1/2 -translate-y-1/2 z-20 shadow-[0_0_30px_#F97316] border-4 border-white dark:border-midnight"
         >
            <div className="absolute inset-0 rounded-full animate-ping bg-sunset/30 scale-150" />
         </motion.div>
 
-        <div className="space-y-24 md:space-y-40">
+        <div className="space-y-32 md:space-y-56">
           {steps.map((item, index) => (
-            <div key={index} className="relative pl-12 md:pl-24">
-               {/* Large Background Numbers */}
-               <div className="absolute top-0 left-20 md:left-28 hidden lg:block select-none pointer-events-none -z-10 opacity-[0.03]">
-                  <span className="text-[14rem] font-black leading-none text-slate-900 dark:text-white" style={{ WebkitTextStroke: '2px currentColor', color: 'transparent' }}>
+            <div key={index} className="relative pl-14 md:pl-28">
+               <div className="absolute top-0 left-24 md:left-32 hidden lg:block select-none pointer-events-none -z-10 opacity-[0.03]">
+                  <span className="text-[18rem] font-black leading-none text-slate-900 dark:text-white" style={{ WebkitTextStroke: '2px currentColor', color: 'transparent' }}>
                     {item.step}
                   </span>
                 </div>
 
-                <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-20">
+                <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
                   <motion.div 
                     initial={{ opacity: 0, x: -20 }}
                     whileInView={{ opacity: 1, x: 0 }}
@@ -114,24 +108,24 @@ const Process: React.FC = () => {
                     transition={{ duration: 0.8, ease: "easeOut" }}
                     className="flex-1 w-full"
                   >
-                    <div className="bg-white dark:bg-slate-900/60 backdrop-blur-sm border border-slate-200 dark:border-white/10 p-8 md:p-12 rounded-[2.5rem] shadow-lab hover:border-sunset/30 transition-all duration-500 group">
-                      <div className="flex items-center gap-5 mb-8">
-                        <div className="p-4 bg-midnight dark:bg-white text-white dark:text-midnight rounded-2xl shadow-lg group-hover:scale-110 transition-transform">
+                    <div className="bg-white dark:bg-[#020617] border border-slate-200 dark:border-white/10 p-10 md:p-14 rounded-[3.5rem] shadow-lab hover:border-sunset/40 transition-all duration-500 group">
+                      <div className="flex items-center gap-6 mb-10">
+                        <div className="p-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-2xl shadow-xl group-hover:scale-110 transition-transform">
                           {item.icon}
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-black uppercase tracking-[0.5em] text-sunset mb-1">Phase {item.step}</span>
-                          <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-midnight dark:text-white leading-none">{item.title}</h3>
+                          <span className="text-[10px] font-black uppercase tracking-[0.5em] text-sunset mb-2">Phase {item.step}</span>
+                          <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-midnight dark:text-white leading-none">{item.title}</h3>
                         </div>
                       </div>
                       
-                      <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg leading-relaxed font-medium mb-8">{item.description}</p>
+                      <p className="text-slate-500 dark:text-slate-400 text-lg md:text-xl leading-relaxed font-medium mb-10">{item.description}</p>
 
-                      <div className="space-y-4">
+                      <div className="space-y-5">
                         {item.breakdown.map((bullet, bIdx) => (
-                          <div key={bIdx} className="flex items-center gap-4">
-                             <div className="w-2 h-2 bg-electric rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                             <span className="text-[11px] md:text-xs font-black text-slate-400 dark:text-slate-300 uppercase tracking-widest leading-none">{bullet}</span>
+                          <div key={bIdx} className="flex items-center gap-5">
+                             <div className="w-2.5 h-2.5 bg-electric rounded-full shadow-[0_0_12px_rgba(59,130,246,0.6)]" />
+                             <span className="text-xs md:text-sm font-black text-slate-400 dark:text-slate-300 uppercase tracking-widest leading-none">{bullet}</span>
                           </div>
                         ))}
                       </div>
@@ -145,13 +139,23 @@ const Process: React.FC = () => {
                     transition={{ duration: 0.8, delay: 0.2 }}
                     className="flex-1 hidden lg:block"
                   >
-                    <div className="bg-slate-50/50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/10 p-10 rounded-[3rem] font-mono text-[11px] text-slate-400 dark:text-slate-500 shadow-inner">
-                       <div className="flex items-center gap-3 mb-6">
-                          <span className="w-2.5 h-2.5 rounded-full bg-electric animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
-                          <span className="tracking-[0.4em] uppercase font-black text-[9px]">Pipeline_Execution_Unit</span>
+                    <div className="bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-white/10 p-12 rounded-[4rem] font-mono shadow-lab relative overflow-hidden group">
+                       <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                         <Terminal className="text-midnight dark:text-white" size={120} />
                        </div>
-                       <div className="bg-white dark:bg-black/40 p-8 rounded-2xl border border-slate-100 dark:border-white/5 shadow-2xl overflow-hidden whitespace-pre font-mono leading-relaxed">
-                          <code className="text-slate-600 dark:text-slate-400">{item.codeSnippet}</code>
+                       <div className="flex items-center gap-3 mb-8">
+                          <span className="w-3 h-3 rounded-full bg-electric animate-pulse shadow-[0_0_15px_#3B82F6]" />
+                          <span className="tracking-[0.5em] uppercase font-black text-[10px] text-slate-400 dark:text-slate-600">PIPELINE_EXECUTION_UNIT</span>
+                       </div>
+                       <div className="bg-white dark:bg-midnight p-10 rounded-3xl border border-slate-100 dark:border-white/5 shadow-2xl overflow-hidden whitespace-pre font-mono leading-relaxed relative z-10">
+                          <code className="text-slate-600 dark:text-electric font-bold text-sm">
+                            {item.codeSnippet.split('\n').map((line, i) => (
+                              <div key={i} className="flex">
+                                <span className="mr-6 text-slate-300 dark:text-slate-800 select-none">{String(i + 1).padStart(2, '0')}</span>
+                                <span>{line}</span>
+                              </div>
+                            ))}
+                          </code>
                        </div>
                     </div>
                   </motion.div>

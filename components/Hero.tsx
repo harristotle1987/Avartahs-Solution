@@ -3,118 +3,118 @@ import { motion } from 'framer-motion';
 import AuditForm from './AuditForm';
 import { SectionId } from '../types';
 import { analytics } from '../lib/analytics';
-
-const DataStream: React.FC = () => {
-  return (
-    <div className="relative w-full h-[400px] lg:h-[500px] overflow-hidden rounded-[3rem] bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 shadow-lab group">
-      <div className="absolute inset-0 cyber-grid opacity-50 dark:opacity-20" />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-full h-full flex items-center justify-center p-8">
-          <div className="relative w-full h-full border border-electric/10 rounded-3xl flex items-center justify-center overflow-hidden">
-            {[...Array(15)].map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ y: -200, opacity: 0 }}
-                animate={{ 
-                  y: [0, 600], 
-                  opacity: [0, 0.4, 0],
-                  transition: { 
-                    duration: 1.5 + Math.random() * 4, 
-                    repeat: Infinity, 
-                    delay: Math.random() * 3,
-                    ease: "linear"
-                  }
-                }}
-                className="absolute w-[1px] bg-gradient-to-b from-transparent via-electric/30 to-transparent"
-                style={{ left: `${(i + 1) * 6}%`, height: '200px' }}
-              />
-            ))}
-            
-            <div className="relative z-10">
-              <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-                className="w-44 h-44 border border-dashed border-slate-200 dark:border-white/10 rounded-full flex items-center justify-center relative"
-              >
-                <div className="absolute inset-0 bg-sunset/5 blur-3xl rounded-full" />
-                <div className="w-32 h-32 border border-electric/10 rounded-full flex items-center justify-center">
-                   <div className="w-20 h-20 border border-slate-100 dark:border-white/10 rounded-full bg-white dark:bg-slate-900/40 backdrop-blur-md flex items-center justify-center shadow-sm">
-                      <motion.div 
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                        className="w-3 h-3 bg-sunset rounded-full" 
-                      />
-                   </div>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import { ArrowDownRight } from 'lucide-react';
 
 const Hero: React.FC = () => {
   return (
     <div 
       onMouseEnter={() => analytics.logCTAClick('hero')}
-      className="relative pt-16 md:pt-24 pb-12 md:pb-20 px-6 flex items-center justify-center bg-transparent overflow-hidden"
+      className="relative min-h-screen flex items-center justify-center px-6 pt-24 pb-20 overflow-hidden bg-white dark:bg-[#020617] transition-colors duration-500"
     >
-      <div className="max-w-[1600px] mx-auto w-full z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-          <div className="text-left flex flex-col justify-center">
+      <div className="absolute inset-0 cyber-grid pointer-events-none opacity-50" />
+      
+      <div className="max-w-[1500px] mx-auto w-full z-10 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center">
+          
+          {/* Main Headline Pillar */}
+          <div className="lg:col-span-8 flex flex-col justify-center">
             <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3 mb-4 font-mono text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-electric"
+              className="flex items-center gap-3 mb-6"
             >
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sunset opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-sunset"></span>
+              <div className="w-8 h-px bg-sunset" />
+              <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-500">
+                Data Driven Audit System // v4.2
               </span>
-              FOR BUSINESS OWNERS TIRED OF WEBSITES THAT DON'T SELL
             </motion.div>
 
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="text-4xl md:text-5xl lg:text-[58px] xl:text-[72px] font-[900] leading-[1.05] text-midnight dark:text-white uppercase tracking-tighter mb-6"
+              className="text-4xl md:text-5xl lg:text-[4.2rem] xl:text-[5rem] font-[900] leading-[1.1] tracking-[-0.03em] text-midnight dark:text-white mb-10"
             >
-              Generate <span className="text-sunset">2.5X More Leads</span> <br className="hidden xl:block" />
-              and Scale With <span className="text-sunset italic">Confidence</span> in <span className="text-midnight dark:text-white">10 Days</span> <br className="hidden xl:block" />
-              Using Our <span className="text-midnight dark:text-white">Data-Driven Audit</span>
+              From <span className="font-serif-italic text-sunset">Sketch</span> to Scale – <br />
+              I Build the Web <br />
+              You <span className="text-midnight/30 dark:text-white/20">Imagine</span>
             </motion.h1>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 1, delay: 0.4 }}
-              className="text-base md:text-xl text-[#94A3B8] max-w-xl leading-relaxed font-medium mb-8"
-            >
-              Stop losing customers to bad design. Get a logic-based audit & 2X your sales in 10 days.
-            </motion.p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1, delay: 0.4 }}
+              >
+                <p className="text-base md:text-lg text-slate-500 dark:text-slate-400 leading-relaxed font-medium mb-10 max-w-sm">
+                  Stop losing customers to bad design. Get a logic-based audit and transform your digital presence today.
+                </p>
+                
+                <div className="flex items-center gap-4">
+                  <div className="flex -space-x-3">
+                    {[1,2,3,4].map(i => (
+                      <div key={i} className="w-10 h-10 rounded-full border-4 border-white dark:border-midnight bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-sm">
+                        <img src={`https://i.pravatar.cc/100?img=${i+25}`} alt="user" className="w-full h-full object-cover grayscale" />
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black text-midnight dark:text-white leading-none">500+ AUDITS</div>
+                    <div className="text-[8px] text-slate-400 dark:text-slate-600 font-black uppercase tracking-widest mt-1">SUCCESS RATE 100%</div>
+                  </div>
+                </div>
+              </motion.div>
 
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              id={SectionId.Audit} 
-              className="scroll-mt-32 w-full"
-            >
-              <AuditForm />
-            </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                id={SectionId.Audit} 
+                className="scroll-mt-32 w-full"
+              >
+                <div className="relative">
+                  <div className="absolute -top-8 -left-8 opacity-10 pointer-events-none dark:opacity-5">
+                    <ArrowDownRight size={80} className="text-midnight dark:text-white" />
+                  </div>
+                  <AuditForm />
+                </div>
+              </motion.div>
+            </div>
           </div>
+          
+          {/* Status Sidebar */}
+          <div className="hidden lg:col-span-4 lg:flex flex-col justify-start border-l border-slate-100 dark:border-white/5 pl-12 h-full py-10">
+            <div className="space-y-12">
+               <motion.div 
+                 initial={{ opacity: 0, x: 20 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 transition={{ delay: 0.6 }}
+               >
+                 <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 mb-3 block">Node Protocol</span>
+                 <div className="text-xl font-black text-midnight dark:text-white">$1.2M+ Recovered</div>
+                 <div className="text-[8px] font-bold text-electric uppercase tracking-widest mt-2">STATUS: AGGREGATING...</div>
+               </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.2, delay: 0.3 }}
-            className="hidden lg:block w-full"
-          >
-            <DataStream />
-          </motion.div>
+               <motion.div 
+                 initial={{ opacity: 0, x: 20 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 transition={{ delay: 0.7 }}
+               >
+                 <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 mb-3 block">Efficiency Rating</span>
+                 <div className="text-xl font-black text-midnight dark:text-white">98.4% Precision</div>
+                 <div className="text-[8px] font-bold text-sunset uppercase tracking-widest mt-2">SYSTEM: OPTIMIZED</div>
+               </motion.div>
+
+               <div className="pt-10 border-t border-slate-100 dark:border-white/5">
+                 <div className="font-mono text-[9px] leading-loose text-slate-300 dark:text-slate-700">
+                    {`>> SYSTEM_INITIALIZED`} <br/>
+                    {`>> ANALYZING_PIPELINE`} <br/>
+                    {`>> OPTIMIZING_LOADS`} <br/>
+                    {`>> STATUS: READY`}
+                 </div>
+               </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

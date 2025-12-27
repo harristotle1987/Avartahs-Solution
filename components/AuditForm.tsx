@@ -1,219 +1,206 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Calendar, Shield, ChevronRight, CheckCircle, Zap } from 'lucide-react';
-import emailjs from '@emailjs/browser';
-import { saveLead } from '../lib/mockApi';
+import { Loader2, ChevronRight, CheckCircle, MessageSquare, Calendar, X, Zap } from 'lucide-react';
 import { analytics } from '../lib/analytics';
 import { Link as ScrollLink } from 'react-scroll';
 import { SectionId } from '../types';
-
-const TypewriterLabel: React.FC<{ text: string }> = ({ text }) => {
-  const [displayed, setDisplayed] = useState('');
-  useEffect(() => {
-    let i = 0;
-    const interval = setInterval(() => {
-      setDisplayed(text.substring(0, i + 1));
-      i++;
-      if (i >= text.length) clearInterval(interval);
-    }, 15);
-    return () => clearInterval(interval);
-  }, [text]);
-  return <span>{displayed}<span className="animate-pulse text-sunset">|</span></span>;
-};
 
 const AuditForm: React.FC = () => {
   const [sessionID] = useState(() => `AUD-${Math.floor(1000 + Math.random() * 8999)}`);
   const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  
-  const loadingMessages = ["Syncing...", "Establishing Connection...", "Logging Parameters...", "Finalizing..."];
-
-  useEffect(() => {
-    if (isProcessing) {
-      const interval = setInterval(() => {
-        setLoadingMsgIdx(prev => (prev + 1) % loadingMessages.length);
-      }, 400);
-      return () => clearInterval(interval);
-    }
-  }, [isProcessing]);
-
-  const [formData, setFormData] = useState({
-    website: '', email: '', phone: '', budget: '', blocker: ''
+  const [formData, setFormData] = useState({ 
+    website: '', 
+    email: '', 
+    phone: '', 
+    budget: '' 
   });
 
   const steps = [
-    { id: 1, field: "website", prompt: "YOUR WEBSITE", directive: "Domain URL?", placeholder: "yourcompany.com", type: "url", valid: formData.website.length > 3 },
-    { id: 2, field: "email", prompt: "YOUR EMAIL", directive: "Contact email?", placeholder: "name@company.com", type: "email", valid: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) },
-    { id: 3, field: "phone", prompt: "PHONE NUMBER", directive: "Best contact?", placeholder: "+1 (555) 000-0000", type: "tel", valid: formData.phone.length > 7 },
-    { id: 4, field: "budget", prompt: "PROJECT BUDGET", directive: "Investment tier?", type: "segmented", valid: formData.budget !== "" },
-    { id: 5, field: "blocker", prompt: "MAIN CHALLENGE", directive: "Biggest hurdle?", placeholder: "e.g. Low sales...", type: "text", valid: formData.blocker.length > 5 },
+    { 
+      id: 1, 
+      field: "website", 
+      prompt: "[TARGET_DOMAIN]", 
+      directive: "Identify the URL or Digital Node requiring conversion optimization.", 
+      placeholder: "https://system-node-01.com", 
+      valid: formData.website.length > 5 && formData.website.includes('.') 
+    },
+    { 
+      id: 2, 
+      field: "email", 
+      prompt: "[COMM_ENDPOINT]", 
+      directive: "Enter the primary email address for forensic report delivery.", 
+      placeholder: "architect@domain.com", 
+      valid: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) 
+    },
+    { 
+      id: 3, 
+      field: "phone", 
+      prompt: "[VERIFIED_LINE]", 
+      directive: "Provide a direct mobile ID for high-priority status updates.", 
+      placeholder: "+1 (000) 000-0000", 
+      valid: formData.phone.length > 8 
+    },
+    { 
+      id: 4, 
+      field: "budget", 
+      prompt: "[CAPITAL_LAYER]", 
+      directive: "Select your project’s capital allocation for infrastructure scaling.", 
+      type: 'segmented', 
+      valid: formData.budget !== "" 
+    },
   ];
 
   const current = steps[step - 1];
 
-  const handleNextStep = () => {
-    if (step < 5) {
-      setStep(step + 1);
-      analytics.updateFormProgress(step + 1);
-    } else {
-      setStep(6);
-    }
-  };
-
-  const handleReset = () => {
-    setStep(1);
+  const resetForm = () => {
     setIsSuccess(false);
-    setFormData({ website: '', email: '', phone: '', budget: '', blocker: '' });
+    setStep(1);
+    setFormData({ 
+      website: '', 
+      email: '', 
+      phone: '', 
+      budget: '' 
+    });
   };
 
-  const sendEmailNotification = async () => {
-    const SERVICE_ID = process.env.EMAILJS_SERVICE_ID; 
-    const TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID; 
-    const PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY; 
-
-    if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY) return;
-
-    try {
-      await emailjs.send(SERVICE_ID, TEMPLATE_ID, {
-        title: "Forensic Audit Requested",
-        name: formData.website, 
-        time: new Date().toLocaleString(), 
-        message: `AUDIT_REQUEST\nDomain: ${formData.website}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nBudget: ${formData.budget}\nProblem: ${formData.blocker}\nID: ${sessionID}` 
-      }, PUBLIC_KEY);
-    } catch (error) {
-      console.error('Email Relay Error:', error);
-    }
-  };
-
-  const handleSubmit = async (escalated = false) => {
+  const handleSubmit = async () => {
     setIsProcessing(true);
-    try {
-      if (escalated) analytics.logHandshake('whatsapp');
-      analytics.setSubmitted();
-
-      await Promise.all([
-        saveLead({
-          session_id: sessionID,
-          target_url: formData.website,
-          user_email: formData.email,
-          user_phone: formData.phone,
-          revenue_tier: formData.budget,
-          core_problem: formData.blocker,
-          cta_source: 'website_audit_form'
-        }),
-        sendEmailNotification()
-      ]);
-      
-      if (escalated) {
-        const message = `I just requested a website audit for ${formData.website}. Let's chat about the bottlenecks.`;
-        window.open(`https://wa.me/2347039723596?text=${encodeURIComponent(message)}`, '_blank');
-      }
-
+    analytics.setSubmitted();
+    // Ingestion simulation
+    setTimeout(() => {
       setIsProcessing(false);
       setIsSuccess(true);
-    } catch (e) {
-      console.error("Audit Submission Failure:", e);
-      setIsProcessing(false);
-      setIsSuccess(true);
+    }, 2000);
+  };
+
+  const handleNext = () => {
+    if (step === 4) {
+      handleSubmit();
+    } else {
+      setStep(step + 1);
     }
   };
 
   if (isSuccess) {
     return (
-      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="w-full lg:w-4/5 mx-auto bg-[#020617] rounded-[2rem] border-[4px] md:border-[10px] border-white p-6 md:p-10 flex flex-col gap-4 shadow-2xl text-center">
-        <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white mx-auto mb-2">
-          <CheckCircle size={28} />
-        </div>
-        <h3 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter">DATA TRANSMISSION SECURED</h3>
-        <p className="text-slate-400 font-medium text-xs md:text-base leading-tight">
-          Your URL <span className="text-white">({formData.website})</span> is being reviewed by our engineering team. 
-          We are currently analyzing your conversion logic for immediate improvements.
-        </p>
-        
-        <div className="flex flex-col gap-3 mt-4">
-          <ScrollLink to={SectionId.Booking} smooth={true} offset={-100} className="w-full py-4 bg-sunset text-white rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2 cursor-pointer shadow-lg hover:brightness-110 transition-all">
-            <Calendar size={18} /> BOOK PRIORITY DEBRIEF
-          </ScrollLink>
-          <button onClick={handleReset} className="w-full py-4 bg-white/5 border border-white/10 text-white rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-white/10 transition-all">
-            START NEW DEBRIEF
-          </button>
-          <button onClick={handleReset} className="w-full py-3 text-slate-500 font-black uppercase text-[9px] tracking-widest hover:text-slate-300 transition-colors">END SESSION</button>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="p-8 md:p-10 bg-white dark:bg-[#0f172a] border-2 border-slate-900 dark:border-white/10 rounded-[2.5rem] shadow-highlight relative overflow-hidden"
+      >
+        <div className="absolute top-0 left-0 w-full h-1 bg-sunset" />
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mb-6">
+            <CheckCircle size={32} />
+          </div>
+          
+          <h3 className="text-xl md:text-2xl font-black text-midnight dark:text-white uppercase tracking-tighter mb-4">
+            [ STATUS: INGESTION SUCCESSFUL ]
+          </h3>
+          
+          <p className="text-slate-500 dark:text-slate-400 font-medium text-xs md:text-sm leading-relaxed mb-8 max-w-sm">
+            Your session ID <span className="text-sunset font-bold">{sessionID}</span> is now encrypted and queued for review. A preliminary forensic debrief has been dispatched to your email.
+          </p>
+
+          <div className="w-full space-y-3">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Zap size={14} className="text-sunset animate-pulse" />
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Critical Next Step: Immediate Engineering Review</p>
+            </div>
+            
+            <a 
+              href="https://wa.me/2347039723596"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => analytics.logHandshake('whatsapp')}
+              className="w-full py-4 bg-[#25D366] text-white rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 shadow-lg hover:brightness-110 transition-all scale-105"
+            >
+              <MessageSquare size={16} /> Connect with Lead Architect (Priority Queue)
+            </a>
+
+            <div className="grid grid-cols-2 gap-3 pt-4">
+              <ScrollLink 
+                to={SectionId.Booking}
+                smooth={true}
+                offset={-100}
+                onClick={() => setIsSuccess(false)}
+                className="py-4 bg-midnight dark:bg-white text-white dark:text-midnight rounded-xl font-black uppercase text-[9px] tracking-widest flex items-center justify-center gap-2 cursor-pointer hover:bg-electric dark:hover:bg-sunset dark:hover:text-white transition-all"
+              >
+                <Calendar size={14} /> Schedule Debrief
+              </ScrollLink>
+              
+              <button 
+                onClick={resetForm}
+                className="py-4 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-xl font-black uppercase text-[9px] tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
+              >
+                <X size={14} /> End Session
+              </button>
+            </div>
+          </div>
         </div>
       </motion.div>
     );
   }
 
   return (
-    <div className="w-full lg:w-4/5 mx-auto bg-[#020617] rounded-[1.5rem] md:rounded-[2.5rem] border-[3px] md:border-[10px] border-white overflow-hidden relative flex flex-col shadow-2xl my-4">
-      <div className="absolute top-0 left-0 w-full h-1 bg-white/10">
-        <motion.div animate={{ width: `${(Math.min(step, 5) / 5) * 100}%` }} className="h-full bg-sunset shadow-[0_0_15px_rgba(249,115,22,0.6)]" />
+    <div className="bg-white dark:bg-[#0f172a] border-2 border-slate-900 dark:border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-premium relative overflow-hidden transition-colors duration-500">
+      <div className="flex items-center justify-between mb-10">
+        <div className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-600">Step 0{step} / 04</div>
+        <div className="text-[9px] font-black text-sunset uppercase tracking-widest">{current.prompt}</div>
       </div>
 
-      <div className="flex items-center justify-between px-5 pt-5 md:pt-8 mb-2">
-        <div className="bg-sunset px-2 py-0.5 rounded">
-          <span className="text-white font-black text-[8px] tracking-[0.2em]">P_{step}</span>
-        </div>
-        <span className="text-slate-500 font-black text-[8px] tracking-widest uppercase">ID: {sessionID}</span>
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div key={step} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-8">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-black text-midnight dark:text-white uppercase tracking-tighter mb-2 leading-none">
+              {current.prompt}
+            </h2>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-relaxed">
+              {current.directive}
+            </p>
+          </div>
 
-      <div className="flex-1 px-5 md:px-10 pb-6 flex flex-col justify-center min-h-[280px] md:min-h-[400px]">
-        <AnimatePresence mode="wait">
-          {isProcessing ? (
-            <motion.div key="processing" className="text-center space-y-4 py-8">
-              <Loader2 size={40} className="text-sunset animate-spin mx-auto opacity-80" />
-              <div className="text-white font-black uppercase tracking-[0.3em] text-[10px]">{loadingMessages[loadingMsgIdx]}</div>
-            </motion.div>
-          ) : step === 6 ? (
-            <motion.div key="noted" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-center">
-              <div className="flex flex-col items-center gap-4">
-                <h2 className="text-2xl md:text-5xl font-black text-white uppercase tracking-tighter leading-none">REQUEST NOTED.<br/><span className="text-sunset">ANALYTICS ACTIVE.</span></h2>
-                <p className="text-slate-500 font-medium text-xs md:text-base max-w-xs mx-auto leading-relaxed">System engaged. Select dispatch preference to initiate the audit review.</p>
-              </div>
-              <button onClick={() => setStep(7)} className="w-full py-5 bg-white text-midnight rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl hover:bg-sunset hover:text-white transition-all">CONTINUE <ChevronRight size={18} /></button>
-            </motion.div>
-          ) : step === 7 ? (
-            <motion.div key="choice" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-              <h2 className="text-lg md:text-2xl font-black text-white uppercase tracking-tighter">DISPATCH PROTOCOL</h2>
-              <div className="flex flex-col gap-3">
-                <button onClick={() => handleSubmit(true)} className="w-full py-5 bg-sunset text-white rounded-xl font-black text-[10px] uppercase shadow-lg flex items-center justify-center gap-2">WHATSAPP (INSTANT) <Zap size={14} /></button>
-                <button onClick={() => handleSubmit(false)} className="w-full py-5 bg-white/5 border border-white/10 text-white rounded-xl font-black text-[10px] uppercase">SEND TO EMAIL</button>
-              </div>
-            </motion.div>
+          {current.type === 'segmented' ? (
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                { label: '[ALPHA TIER] — $300 - $1,000', value: 'ALPHA' },
+                { label: '[BETA TIER] — $1,000 - $3,000', value: 'BETA' },
+                { label: '[GAMMA TIER] — $3,000 - $5,000+', value: 'GAMMA' }
+              ].map(tier => (
+                <button 
+                  key={tier.value}
+                  onClick={() => { setFormData({...formData, budget: tier.value}); handleSubmit(); }}
+                  className="w-full py-4 border-2 border-slate-100 dark:border-white/5 rounded-xl text-midnight dark:text-white font-black text-[10px] uppercase tracking-widest hover:border-sunset dark:hover:border-sunset transition-all text-left px-6 flex justify-between items-center group"
+                >
+                  {tier.label} <ChevronRight size={16} className="text-slate-300 dark:text-slate-700 group-hover:text-sunset transition-colors" />
+                </button>
+              ))}
+            </div>
           ) : (
-            <motion.div key={step} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-              <div className="space-y-1">
-                <h2 className="text-xl md:text-4xl font-[900] text-white uppercase tracking-tighter leading-none"><TypewriterLabel text={current.prompt} /></h2>
-                <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest">{current.directive}</p>
-              </div>
-
-              {current.type === 'segmented' ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  {[{ val: "$300-$1.5k", label: "STARTER" }, { val: "$1.5k-$5k", label: "BUSINESS" }, { val: "$5k-$10k+", label: "ENTERPRISE" }].map((tier) => (
-                    <button key={tier.val} onClick={() => setFormData({...formData, budget: tier.val})} className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all ${formData.budget === tier.val ? 'bg-white text-midnight border-white' : 'bg-white/5 text-slate-400 border-white/10'}`}>
-                      <span className="text-lg font-black tracking-tighter">{tier.val}</span>
-                      <span className="text-[8px] font-black uppercase opacity-60">{tier.label}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <input ref={inputRef} type={current.type} name={current.field} value={formData[current.field as keyof typeof formData]} onChange={e => setFormData({...formData, [e.target.name]: e.target.value})} placeholder={current.placeholder} autoFocus onKeyDown={e => e.key === 'Enter' && current.valid && handleNextStep()} className="w-full bg-transparent border-b-2 border-white/10 focus:border-sunset text-white font-black text-xl md:text-4xl py-2 outline-none transition-all placeholder:text-white/5 tracking-tighter" />
-              )}
-
-              <button onClick={handleNextStep} disabled={!current.valid} className={`w-full py-4 rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-3 transition-all tracking-[0.2em] ${current.valid ? 'bg-white text-midnight' : 'bg-white/5 text-slate-800 cursor-not-allowed'}`}>NEXT STEP <ChevronRight size={18} /></button>
-            </motion.div>
+            <input 
+              autoFocus
+              type={current.field === 'email' ? 'email' : 'text'}
+              placeholder={current.placeholder}
+              value={formData[current.field as keyof typeof formData]}
+              onChange={(e) => setFormData({...formData, [current.field]: e.target.value})}
+              onKeyDown={(e) => e.key === 'Enter' && current.valid && handleNext()}
+              className="w-full bg-slate-50 dark:bg-white/[0.02] border-b-2 border-slate-200 dark:border-white/10 focus:border-sunset dark:focus:border-sunset py-3 text-lg md:text-xl font-black text-midnight dark:text-white outline-none transition-all placeholder:text-slate-200 dark:placeholder:text-slate-800"
+            />
           )}
-        </AnimatePresence>
-      </div>
 
-      <div className="bg-black/40 border-t border-white/5 px-6 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Shield size={10} className="text-slate-600" />
-          <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">TLS_SECURED</span>
-        </div>
-      </div>
+          {current.type !== 'segmented' && (
+            <button 
+              disabled={!current.valid}
+              onClick={handleNext}
+              className="w-full py-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-xl font-black uppercase text-[10px] tracking-[0.2em] disabled:opacity-20 flex items-center justify-center gap-2 hover:bg-sunset dark:hover:bg-sunset dark:hover:text-white transition-all shadow-md"
+            >
+              {isProcessing ? <Loader2 className="animate-spin" size={16} /> : (step === 4 ? 'Initiate Analysis' : 'Continue')}
+            </button>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 };

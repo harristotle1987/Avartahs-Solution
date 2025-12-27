@@ -13,15 +13,17 @@ export interface AuditReport {
 }
 
 export const generateAuditReport = async (url: string, challenge: string): Promise<AuditReport> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
+  // Use API key directly from process.env as per coding guidelines
+  if (!process.env.API_KEY) {
     throw new Error("Gemini API_KEY is not configured.");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  // Initializing with named parameter as required by the latest SDK
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    // Upgraded to gemini-3-pro-preview for complex reasoning tasks like conversion audits
+    model: "gemini-3-pro-preview",
     contents: `Analyze this website: ${url}. Main business challenge: ${challenge}. Perform a forensic conversion audit.`,
     config: {
       systemInstruction: "You are a senior conversion rate optimization engineer and full-stack architect. Provide a high-density, forensic technical audit. Be critical and data-focused.",
@@ -44,6 +46,7 @@ export const generateAuditReport = async (url: string, challenge: string): Promi
     }
   });
 
+  // Extracting text directly using .text property as per guidelines
   const text = response.text;
   if (!text) throw new Error("AI failed to generate report.");
   

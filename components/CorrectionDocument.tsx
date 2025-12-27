@@ -35,7 +35,8 @@ const CorrectionDocument: React.FC<CorrectionDocumentProps> = ({ report, url, on
         <div className="text-left md:text-right">
           <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest mb-1">AUDIT_TARGET</p>
           <p className="text-lg font-bold truncate max-w-[300px]">{url}</p>
-          <p className="text-sunset font-mono text-[10px] mt-1 font-black">REPORT_GEN: Gemini_V3_Flash</p>
+          {/* Updated model label to show Gemini 3 Pro is being utilized */}
+          <p className="text-sunset font-mono text-[10px] mt-1 font-black">REPORT_GEN: Gemini_V3_Pro</p>
         </div>
       </div>
 

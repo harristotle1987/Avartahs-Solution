@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="globals.css">
     <script>
       // Shim process.env for browser compatibility
-      window.process = { env: {} };
+      window.process = window.process || { env: {} };
       
       tailwind.config = {
         darkMode: 'class',
@@ -46,6 +46,7 @@
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
     "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
     "framer-motion": "https://esm.sh/framer-motion@^12.23.26",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
@@ -64,7 +65,6 @@
 </head>
 <body class="bg-[#F8FAFC] text-[#0F172A] antialiased selection:bg-sunset/10 selection:text-sunset">
     <div id="root"></div>
-    <!-- Application Entry Point -->
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>

@@ -39,25 +39,18 @@ const BookingCalendar: React.FC = () => {
     if (selectedDate && selectedTime) setStep('email');
   };
 
-  const sendBookingEmail = async () => {
-    // Environment variables strictly enforced
-    const SERVICE_ID = process.env.EMAILJS_SERVICE_ID; 
-    const TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID; 
-    const PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY; 
-
-    if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY) return;
-
-    try {
-      await emailjs.send(SERVICE_ID, TEMPLATE_ID, {
-        title: "Session Booked",
-        name: email,
-        time: new Date().toLocaleString(),
-        message: `Date: ${selectedDate?.toLocaleDateString()}\nTime: ${selectedTime}\nEmail: ${email}\nID: ${sessionID}`
-      }, PUBLIC_KEY);
-    } catch (error) {
-      console.error('Email Error:', error);
+  // Success screen auto-reload timer
+  useEffect(() => {
+    if (step === 'success') {
+      const timer = setTimeout(() => {
+        setStep('datetime');
+        setSelectedDate(null);
+        setSelectedTime(null);
+        setEmail('');
+      }, 5000);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [step]);
 
   const handleFinalize = async () => {
     if (!email || !selectedDate || !selectedTime) return;
@@ -70,7 +63,6 @@ const BookingCalendar: React.FC = () => {
         time: selectedTime,
         session_id: sessionID
       });
-      await sendBookingEmail();
       analytics.logHandshake('calendly');
       setIsTransmitting(false);
       setStep('success');
@@ -84,7 +76,7 @@ const BookingCalendar: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-[#1e293b]/90 rounded-[1.5rem] md:rounded-[2.5rem] shadow-lab overflow-hidden border border-slate-200 dark:border-white/10 text-midnight dark:text-gray-100 w-full max-w-lg relative min-h-[440px] flex flex-col font-mono"
+      className="bg-white dark:bg-[#0f172a]/90 rounded-[1.5rem] md:rounded-[2.5rem] shadow-lab overflow-hidden border border-slate-200 dark:border-white/10 text-midnight dark:text-gray-100 w-full max-w-lg relative min-h-[440px] flex flex-col font-mono transition-colors duration-500"
     >
       <AnimatePresence mode="wait">
         {step === 'datetime' ? (
@@ -97,7 +89,7 @@ const BookingCalendar: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-7 mb-2 text-center text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest">
+            <div className="grid grid-cols-7 mb-2 text-center text-[8px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">
               {days.map((day, i) => <div key={i}>{day}</div>)}
             </div>
 
@@ -112,7 +104,7 @@ const BookingCalendar: React.FC = () => {
                         className={`w-full h-full rounded-md text-[10px] font-black transition-all ${
                           isSelected 
                             ? 'bg-sunset text-white shadow-lg' 
-                            : 'text-midnight dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10'
+                            : 'text-midnight dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/10'
                         }`}
                       >
                         {day}
@@ -125,7 +117,7 @@ const BookingCalendar: React.FC = () => {
 
             {selectedDate && (
               <div className="mt-2 space-y-2">
-                <span className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">Available Slots</span>
+                <span className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-600 tracking-widest">Available Slots</span>
                 <div className="grid grid-cols-2 gap-2">
                   {timeSlots.map(time => (
                     <button 
@@ -134,7 +126,7 @@ const BookingCalendar: React.FC = () => {
                       className={`px-2 py-2 rounded-lg text-[9px] font-black transition-all ${
                         selectedTime === time 
                           ? 'bg-midnight dark:bg-white text-white dark:text-midnight shadow-md' 
-                          : 'bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-400 hover:text-midnight dark:hover:text-white'
+                          : 'bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-500 hover:text-midnight dark:hover:text-white'
                       }`}
                     >
                       {time}
@@ -171,15 +163,13 @@ const BookingCalendar: React.FC = () => {
           </motion.div>
         ) : (
           <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-6 md:p-12 text-center flex-1 flex flex-col items-center justify-center">
-            <div className="w-12 h-12 bg-green-50 dark:bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mb-4"><CheckCircle2 size={24} /></div>
+            <div className="w-16 h-16 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mb-6"><CheckCircle2 size={32} /></div>
             <h3 className="text-xl font-black text-midnight dark:text-white uppercase tracking-tighter mb-2">Confirmed</h3>
-            <p className="text-slate-400 dark:text-slate-500 text-[10px] mb-6 font-medium">Session set for {selectedTime}. Confirmation dispatched to {email}.</p>
-            <button 
-              onClick={() => setStep('datetime')} 
-              className="w-full py-4 bg-slate-50 dark:bg-white/5 text-midnight dark:text-white border border-transparent dark:border-white/10 rounded-xl font-black uppercase text-[10px] hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
-            >
-              DONE
-            </button>
+            <p className="text-slate-400 dark:text-slate-500 text-[10px] mb-6 font-medium leading-relaxed">
+              Session set for <span className="text-midnight dark:text-white font-bold">{selectedTime}</span>. <br/>
+              Confirmation dispatched to {email}. <br/>
+              <span className="text-[8px] uppercase tracking-widest mt-4 block opacity-40">Auto-resetting system state...</span>
+            </p>
           </motion.div>
         )}
       </AnimatePresence>

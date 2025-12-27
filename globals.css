@@ -2,63 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:italic&family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap');
+
 :root {
-  --background: #F8FAFC;
+  --background: #FFFFFF;
   --foreground: #0F172A;
   --muted: #64748B;
-  --border: #E2E8F0;
-  --card-bg: #FFFFFF;
   --electric: #3B82F6;
   --sunset: #F97316;
-  --dot-color: rgba(15, 23, 42, 0.04);
+}
+
+.dark {
+  --background: #020617;
+  --foreground: #F8FAFC;
 }
 
 html {
   scroll-behavior: smooth;
-  background-color: var(--background);
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  overflow-x: hidden;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.5s ease;
 }
 
-/* Laboratory Dot Grid Background */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
-  background-size: 24px 24px;
+.font-serif-italic {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
 }
 
+/* Light Technical Grid */
 .cyber-grid {
   background-image: 
-    linear-gradient(rgba(15, 23, 42, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.02) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
 }
 
-.scanline {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(to bottom, transparent, rgba(15, 23, 42, 0.05), transparent);
-  animation: scanline 10s linear infinite;
-  pointer-events: none;
-  z-index: 5;
+.dark .cyber-grid {
+  background-image: 
+    linear-gradient(rgba(248, 250, 252, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(248, 250, 252, 0.02) 1px, transparent 1px);
 }
 
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(1000%); }
+.shadow-premium {
+  box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.04);
+}
+
+.dark .shadow-premium {
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.4);
+}
+
+.shadow-highlight {
+  box-shadow: 0 20px 60px -15px rgba(249, 115, 22, 0.12);
 }
 
 ::-webkit-scrollbar {
@@ -70,6 +69,10 @@ body::before {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #E2E8F0;
   border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
 }
