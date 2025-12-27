@@ -17,12 +17,16 @@ import {
   ChevronUp,
   ExternalLink,
   Trash2,
-  Loader2
+  Loader2,
+  Copy,
+  Globe,
+  Server
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Lead, SiteAnalytics } from '../types';
 import { getLeads, updateLeadStatus, getAnalytics, deleteLead } from '../lib/mockApi';
 import { isAuthenticated, logout } from '../lib/auth';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 const WeeklySummary: React.FC<{ data: SiteAnalytics[]; leads: Lead[] }> = ({ data, leads }) => {
   const stats = useMemo(() => {
@@ -248,6 +252,7 @@ const AdminDashboard: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [instanceID] = useState(() => Math.random().toString(36).substr(2, 8).toUpperCase());
   
   const navigate = useNavigate();
@@ -263,9 +268,15 @@ const AdminDashboard: React.FC = () => {
       setAnalyticsData(analyticsRes);
     } catch (err) {
       console.error("Data Fetch Protocol Error:", err);
+      showToast("SYSTEM DATA SYNC FAILED", "error");
     } finally {
       setLoading(false);
     }
+  };
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
   };
 
   useEffect(() => {
@@ -277,15 +288,30 @@ const AdminDashboard: React.FC = () => {
   }, [navigate]);
 
   const handleStatusChange = async (id: string, status: Lead['status']) => {
-    await updateLeadStatus(id, status);
-    fetchData();
+    try {
+      await updateLeadStatus(id, status);
+      showToast("STATUS UPDATED");
+      fetchData();
+    } catch (e) {
+      showToast("UPDATE FAILED", "error");
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('PERMANENTLY DELETE THIS RECORD?')) {
-      await deleteLead(id);
-      fetchData();
+      try {
+        await deleteLead(id);
+        showToast("RECORD PURGED");
+        fetchData();
+      } catch (e) {
+        showToast("DELETE FAILED", "error");
+      }
     }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    showToast("COPIED TO CLIPBOARD");
   };
 
   const filteredLeads = useMemo(() => {
@@ -322,13 +348,36 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-600 font-mono p-4 md:p-8 transition-colors">
+      <AnimatePresence>
+        {toast && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className={`fixed bottom-8 right-8 z-[200] px-6 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-2xl border ${
+              toast.type === 'success' ? 'bg-midnight dark:bg-white text-white dark:text-midnight border-white/10' : 'bg-red-500 text-white border-red-400'
+            }`}
+          >
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <header className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 border-b border-slate-200 dark:border-white/5 pb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <Terminal size={20} className="text-electric" />
             <h1 className="text-midnight dark:text-white text-xl font-black tracking-tighter uppercase">AVARTAH // OPS_LEDGER_v4.2</h1>
           </div>
-          <p className="text-[10px] font-bold text-slate-400 tracking-[0.4em] uppercase">INTERNAL PROTOCOLS // ANALYTICS & REVENUE DATA</p>
+          <div className="flex items-center gap-6">
+            <p className="text-[10px] font-bold text-slate-400 tracking-[0.4em] uppercase">INTERNAL PROTOCOLS // ANALYTICS & REVENUE DATA</p>
+            <div className="flex items-center gap-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${isSupabaseConfigured ? 'bg-green-500 animate-pulse' : 'bg-orange-500'}`} />
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                DB_NODE: {isSupabaseConfigured ? 'REMOTE_READY' : 'LOCAL_ONLY'}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
@@ -424,7 +473,14 @@ const AdminDashboard: React.FC = () => {
                               <span className="text-[10px] font-black text-electric">#{lead.session_id?.split('-')[1] || lead.id.slice(0, 4)}</span>
                               <div className="text-[8px] font-bold text-slate-300 dark:text-slate-700 mt-1">{new Date(lead.created_at).toLocaleDateString()}</div>
                             </td>
-                            <td className="px-8 py-5 text-[11px] font-bold text-midnight dark:text-white">{lead.user_email}</td>
+                            <td className="px-8 py-5 text-[11px] font-bold text-midnight dark:text-white">
+                              <div className="flex items-center gap-2">
+                                {lead.user_email}
+                                <button onClick={(e) => {e.stopPropagation(); copyToClipboard(lead.user_email);}} className="opacity-0 group-hover:opacity-100 p-1 hover:text-sunset transition-all">
+                                  <Copy size={10} />
+                                </button>
+                              </div>
+                            </td>
                             <td className="px-8 py-5 text-[11px] font-bold text-midnight dark:text-white">
                               <div className="flex items-center gap-2">
                                 {lead.target_url}

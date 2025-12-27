@@ -65,11 +65,10 @@ const BookingCalendar: React.FC = () => {
     };
 
     try {
-      // 1. Save to Database (Supabase or LocalStorage)
+      // 1. Save to Database (Hybrid Local/Supabase)
       await saveBooking(bookingData);
       
       // 2. Transmit via EmailJS Protocol
-      // These keys should be defined in your deployment environment
       const serviceID = process.env.EMAILJS_SERVICE_ID || 'default_service';
       const templateID = process.env.EMAILJS_TEMPLATE_ID || 'template_booking';
       const publicKey = process.env.EMAILJS_PUBLIC_KEY || '';
@@ -84,18 +83,20 @@ const BookingCalendar: React.FC = () => {
             booking_date: bookingData.date,
             booking_time: bookingData.time,
             session_id: bookingData.session_id,
-            message: `A new strategy session has been locked for ${bookingData.date} at ${bookingData.time}.`
+            message: `New strategy session locked: ${bookingData.date} at ${bookingData.time}.`
           },
           publicKey
         );
+      } else {
+        console.warn("EmailJS Public Key missing. Transmission logged but not emailed.");
       }
 
       analytics.logHandshake('calendly');
       setIsTransmitting(false);
       setStep('success');
     } catch (err) {
-      console.warn("Communication Bridge Fault:", err);
-      // Proceed to success anyway as data is saved locally/to DB
+      console.warn("Communication Bridge Exception:", err);
+      // Fallback to success if data is saved locally/DB but email failed
       setIsTransmitting(false);
       setStep('success'); 
     }

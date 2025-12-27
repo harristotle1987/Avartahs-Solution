@@ -1,3 +1,4 @@
+
 import { Lead, SiteAnalytics } from '../types';
 import { supabase, isSupabaseConfigured } from './supabase';
 
@@ -10,18 +11,17 @@ const generateUUID = () => {
 };
 
 const getLocalLeads = (): Lead[] => {
-  const saved = localStorage.getItem('avartah_audit_submissions');
-  return saved ? JSON.parse(saved) : [];
-};
-
-const getLocalBookings = (): any[] => {
-  const saved = localStorage.getItem('avartah_session_bookings');
-  return saved ? JSON.parse(saved) : [];
+  try {
+    const saved = localStorage.getItem('avartah_audit_submissions');
+    return saved ? JSON.parse(saved) : [];
+  } catch { return []; }
 };
 
 const getLocalAnalytics = (): SiteAnalytics[] => {
-  const saved = localStorage.getItem('avartah_site_analytics_log');
-  return saved ? JSON.parse(saved) : [];
+  try {
+    const saved = localStorage.getItem('avartah_site_analytics_log');
+    return saved ? JSON.parse(saved) : [];
+  } catch { return []; }
 };
 
 const saveLocalLead = (lead: Lead) => {
@@ -30,7 +30,8 @@ const saveLocalLead = (lead: Lead) => {
 };
 
 const saveLocalBooking = (booking: any) => {
-  const bookings = getLocalBookings();
+  const saved = localStorage.getItem('avartah_session_bookings');
+  const bookings = saved ? JSON.parse(saved) : [];
   localStorage.setItem('avartah_session_bookings', JSON.stringify([booking, ...bookings]));
 };
 
@@ -39,17 +40,18 @@ export const getLeads = async (): Promise<Lead[]> => {
     return getLocalLeads();
   }
 
-  const { data, error } = await supabase
-    .from('audit_submissions')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('audit_submissions')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Supabase Error (getLeads):', error.message);
+    if (error) throw error;
+    return data as Lead[];
+  } catch (err) {
+    console.warn('Supabase Fetch Failed, falling back to LocalStorage:', err);
     return getLocalLeads();
   }
-
-  return data as Lead[];
 };
 
 export const getAnalytics = async (): Promise<SiteAnalytics[]> => {
@@ -57,17 +59,18 @@ export const getAnalytics = async (): Promise<SiteAnalytics[]> => {
     return getLocalAnalytics();
   }
 
-  const { data, error } = await supabase
-    .from('site_analytics')
-    .select('*')
-    .order('session_start', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('site_analytics')
+      .select('*')
+      .order('session_start', { ascending: false });
 
-  if (error) {
-    console.error('Supabase Error (getAnalytics):', error.message);
+    if (error) throw error;
+    return data as SiteAnalytics[];
+  } catch (err) {
+    console.warn('Supabase Analytics Fetch Failed:', err);
     return getLocalAnalytics();
   }
-
-  return data as SiteAnalytics[];
 };
 
 export const saveLead = async (data: any): Promise<any> => {
@@ -93,18 +96,25 @@ export const saveLead = async (data: any): Promise<any> => {
     return localLead;
   }
 
-  const { data: savedData, error } = await supabase
-    .from('audit_submissions')
-    .insert([newLead])
-    .select()
-    .single();
+  try {
+    const { data: savedData, error } = await supabase
+      .from('audit_submissions')
+      .insert([newLead])
+      .select()
+      .single();
 
-  if (error) {
-    console.error('Supabase Error (saveLead):', error.message);
-    throw new Error(error.message);
+    if (error) throw error;
+    return savedData;
+  } catch (err) {
+    const localLead: Lead = {
+      id: generateUUID(),
+      ...newLead,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    } as Lead;
+    saveLocalLead(localLead);
+    return localLead;
   }
-
-  return savedData;
 };
 
 export const saveBooking = async (data: { email: string, phone: string, date: string, time: string, session_id: string }): Promise<any> => {
@@ -118,18 +128,24 @@ export const saveBooking = async (data: { email: string, phone: string, date: st
     return localBooking;
   }
 
-  const { data: savedData, error } = await supabase
-    .from('session_bookings')
-    .insert([data])
-    .select()
-    .single();
+  try {
+    const { data: savedData, error } = await supabase
+      .from('session_bookings')
+      .insert([data])
+      .select()
+      .single();
 
-  if (error) {
-    console.error('Supabase Error (saveBooking):', error.message);
-    throw new Error(error.message);
+    if (error) throw error;
+    return savedData;
+  } catch (err) {
+    const localBooking = {
+      id: generateUUID(),
+      ...data,
+      created_at: new Date().toISOString()
+    };
+    saveLocalBooking(localBooking);
+    return localBooking;
   }
-
-  return savedData;
 };
 
 export const updateLeadStatus = async (id: string, status: Lead['status']): Promise<void> => {
@@ -139,12 +155,15 @@ export const updateLeadStatus = async (id: string, status: Lead['status']): Prom
     return;
   }
 
-  const { error } = await supabase
-    .from('audit_submissions')
-    .update({ status })
-    .eq('id', id);
-
-  if (error) console.error('Supabase Error (updateStatus):', error.message);
+  try {
+    const { error } = await supabase
+      .from('audit_submissions')
+      .update({ status })
+      .eq('id', id);
+    if (error) throw error;
+  } catch (err) {
+    console.error('Update Status Failed:', err);
+  }
 };
 
 export const deleteLead = async (id: string): Promise<void> => {
@@ -154,10 +173,13 @@ export const deleteLead = async (id: string): Promise<void> => {
     return;
   }
 
-  const { error } = await supabase
-    .from('audit_submissions')
-    .delete()
-    .eq('id', id);
-
-  if (error) console.error('Supabase Error (deleteLead):', error.message);
+  try {
+    const { error } = await supabase
+      .from('audit_submissions')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  } catch (err) {
+    console.error('Delete Lead Failed:', err);
+  }
 };

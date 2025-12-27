@@ -1,16 +1,15 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-// Credentials are now strictly fetched from environment variables.
-// In development, ensure your .env file is populated.
-// In Vercel, add these to the Project Environment Variables.
+// Credentials fetched from environment variables.
 export const supabaseUrl = process.env.SUPABASE_URL || '';
 export const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 
-// Logic to prevent the app from crashing if variables are missing
-export const isSupabaseConfigured = !!supabaseUrl && !!supabaseAnonKey;
+// Logic to check if Supabase is actually configured
+export const isSupabaseConfigured = !!supabaseUrl && !!supabaseAnonKey && supabaseUrl.startsWith('http');
 
-// Initialization
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co', 
-  supabaseAnonKey || 'placeholder'
-);
+// Safe Initialization: Use a dummy URL if keys are missing to prevent library crashes
+const safeUrl = isSupabaseConfigured ? supabaseUrl : 'https://placeholder.supabase.co';
+const safeKey = isSupabaseConfigured ? supabaseAnonKey : 'placeholder';
+
+export const supabase = createClient(safeUrl, safeKey);
