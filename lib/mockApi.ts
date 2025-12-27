@@ -6,24 +6,26 @@ const generateUUID = () => {
   try {
     return crypto.randomUUID();
   } catch (e) {
-    return 'rec-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+    return 'id-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
   }
 };
 
-const getLocalLeads = (): Lead[] => {
+const getLocalData = (key: string) => {
   try {
-    const saved = localStorage.getItem('avartah_audit_submissions');
+    const saved = localStorage.getItem(key);
     return saved ? JSON.parse(saved) : [];
   } catch { return []; }
 };
 
-const getLocalAnalytics = (): SiteAnalytics[] => {
+const setLocalData = (key: string, data: any) => {
   try {
-    const saved = localStorage.getItem('avartah_site_analytics_log');
-    return saved ? JSON.parse(saved) : [];
-  } catch { return []; }
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) { console.error('Local Storage Fault:', e); }
 };
 
+/**
+ * FETCH: LEADS (Supabase Priority)
+ */
 export const getLeads = async (): Promise<Lead[]> => {
   if (isSupabaseConfigured) {
     const { data, error } = await supabase
@@ -31,12 +33,15 @@ export const getLeads = async (): Promise<Lead[]> => {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error) return data as Lead[];
-    console.error('Supabase Fetch Error:', error);
+    if (!error && data) return data as Lead[];
+    console.warn('Supabase Fetch Node Offline, falling back to local.');
   }
-  return getLocalLeads();
+  return getLocalData('avartah_audit_submissions');
 };
 
+/**
+ * FETCH: ANALYTICS (Supabase Priority)
+ */
 export const getAnalytics = async (): Promise<SiteAnalytics[]> => {
   if (isSupabaseConfigured) {
     const { data, error } = await supabase
@@ -44,12 +49,14 @@ export const getAnalytics = async (): Promise<SiteAnalytics[]> => {
       .select('*')
       .order('session_start', { ascending: false });
 
-    if (!error) return data as SiteAnalytics[];
-    console.error('Supabase Analytics Error:', error);
+    if (!error && data) return data as SiteAnalytics[];
   }
-  return getLocalAnalytics();
+  return getLocalData('avartah_site_analytics_log');
 };
 
+/**
+ * SAVE: LEAD DATA
+ */
 export const saveLead = async (data: any): Promise<any> => {
   const newLead = {
     session_id: data.session_id,
@@ -57,9 +64,10 @@ export const saveLead = async (data: any): Promise<any> => {
     user_email: data.user_email,
     user_phone: data.user_phone,
     revenue_tier: data.revenue_tier,
-    core_problem: "SYNC_TEST_NODE",
+    core_problem: data.core_problem || "PENDING_ANALYSIS",
     cta_source: data.cta_source || 'direct',
-    status: 'pending'
+    status: 'pending',
+    created_at: new Date().toISOString()
   };
 
   if (isSupabaseConfigured) {
@@ -72,47 +80,66 @@ export const saveLead = async (data: any): Promise<any> => {
     if (!error) return saved;
   }
 
-  const localLead: Lead = {
-    id: generateUUID(),
-    ...newLead,
-    created_at: new Date().toISOString()
-  } as Lead;
-  
-  const leads = getLocalLeads();
-  localStorage.setItem('avartah_audit_submissions', JSON.stringify([localLead, ...leads]));
+  // Local Failover
+  const localLead = { id: generateUUID(), ...newLead };
+  const leads = getLocalData('avartah_audit_submissions');
+  setLocalData('avartah_audit_submissions', [localLead, ...leads]);
   return localLead;
 };
 
+/**
+ * SAVE: SESSION BOOKING
+ */
 export const saveBooking = async (data: any): Promise<any> => {
+  const bookingEntry = {
+    ...data,
+    created_at: new Date().toISOString()
+  };
+
   if (isSupabaseConfigured) {
     const { data: saved, error } = await supabase
       .from('session_bookings')
-      .insert([data])
+      .insert([bookingEntry])
       .select()
       .single();
     if (!error) return saved;
   }
 
-  const saved = localStorage.getItem('avartah_session_bookings');
-  const bookings = saved ? JSON.parse(saved) : [];
-  localStorage.setItem('avartah_session_bookings', JSON.stringify([{...data, created_at: new Date().toISOString()}, ...bookings]));
-  return data;
+  const bookings = getLocalData('avartah_session_bookings');
+  setLocalData('avartah_session_bookings', [bookingEntry, ...bookings]);
+  return bookingEntry;
 };
 
+/**
+ * UPDATE: LEAD STATUS
+ */
 export const updateLeadStatus = async (id: string, status: Lead['status']): Promise<void> => {
   if (isSupabaseConfigured) {
-    const { error } = await supabase.from('audit_submissions').update({ status }).eq('id', id);
+    const { error } = await supabase
+      .from('audit_submissions')
+      .update({ status })
+      .match({ id });
     if (!error) return;
   }
-  const leads = getLocalLeads().map(l => l.id === id ? { ...l, status } : l);
-  localStorage.setItem('avartah_audit_submissions', JSON.stringify(leads));
+  
+  const leads = getLocalData('avartah_audit_submissions').map((l: any) => 
+    l.id === id ? { ...l, status } : l
+  );
+  setLocalData('avartah_audit_submissions', leads);
 };
 
+/**
+ * DELETE: LEAD RECORD
+ */
 export const deleteLead = async (id: string): Promise<void> => {
   if (isSupabaseConfigured) {
-    const { error } = await supabase.from('audit_submissions').delete().eq('id', id);
+    const { error } = await supabase
+      .from('audit_submissions')
+      .delete()
+      .match({ id });
     if (!error) return;
   }
-  const leads = getLocalLeads().filter(l => l.id !== id);
-  localStorage.setItem('avartah_audit_submissions', JSON.stringify(leads));
+  
+  const leads = getLocalData('avartah_audit_submissions').filter((l: any) => l.id !== id);
+  setLocalData('avartah_audit_submissions', leads);
 };

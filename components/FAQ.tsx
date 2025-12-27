@@ -39,23 +39,23 @@ const faqs = [
 ];
 
 const FAQ: React.FC = () => {
-  const [open, setOpen] = useState<number | null>(0);
+  const [open, setOpen] = useState<string | null>(faqs[0].q);
 
   return (
     <div className="space-y-4">
-      {faqs.map((faq, i) => (
-        <div key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+      {faqs.map((faq) => (
+        <div key={faq.q} className="border-b border-slate-100 dark:border-white/5 last:border-0">
           <button 
-            onClick={() => setOpen(open === i ? null : i)}
+            onClick={() => setOpen(open === faq.q ? null : faq.q)}
             className="w-full py-6 flex items-center justify-between text-left group transition-all"
           >
             <span className="text-lg md:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-gray-100 group-hover:text-sunset transition-colors">{faq.q}</span>
             <div className="p-2 rounded-full bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-gray-600 group-hover:text-sunset transition-all shrink-0 ml-6">
-              {open === i ? <Minus size={16} /> : <Plus size={16} />}
+              {open === faq.q ? <Minus size={16} /> : <Plus size={16} />}
             </div>
           </button>
           <AnimatePresence>
-            {open === i && (
+            {open === faq.q && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}

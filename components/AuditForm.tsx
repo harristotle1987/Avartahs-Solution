@@ -87,37 +87,37 @@ const AuditForm: React.FC<AuditFormProps> = ({ onAuditComplete }) => {
       user_email: formData.email,
       user_phone: formData.phone,
       revenue_tier: formData.budget,
-      cta_source: 'connectivity_test_v14'
+      cta_source: 'system_handshake_v4'
     };
 
     try {
-      // 1. DATA PERSISTENCE TEST (Supabase/Local)
+      // 1. DATA PERSISTENCE
       await saveLead(payload);
 
-      // 2. NOTIFICATION GATEWAY TEST (EmailJS)
-      const serviceID = process.env.EMAILJS_SERVICE_ID || 'default_service';
-      const templateID = process.env.EMAILJS_TEMPLATE_ID || 'template_audit';
+      // 2. NOTIFICATION
       const publicKey = process.env.EMAILJS_PUBLIC_KEY;
-
-      if (publicKey) {
-        await emailjs.send(serviceID, templateID, {
-          to_email: 'harristotle84@gmail.com',
-          from_email: formData.email,
-          target_url: formData.website,
-          budget_tier: formData.budget,
-          session_id: sessionID,
-          message: `CONNECTION_TEST_SUCCESS: Submission received from ${formData.website}.`
-        }, publicKey);
+      if (publicKey && publicKey !== 'undefined') {
+        await emailjs.send(
+          process.env.EMAILJS_SERVICE_ID || 'default_service',
+          process.env.EMAILJS_TEMPLATE_ID || 'template_audit',
+          {
+            to_email: 'harristotle84@gmail.com',
+            from_email: formData.email,
+            target_url: formData.website,
+            budget_tier: formData.budget,
+            session_id: sessionID,
+          },
+          publicKey
+        );
       }
 
-      // NOTE: Forensic AI Report generation is skipped as requested for connection testing phase.
-      
       setIsProcessing(false);
       setIsSuccess(true);
+      if (onAuditComplete) onAuditComplete(null, formData.website);
     } catch (err: any) {
-      console.error("Backend Handshake Error:", err);
+      console.error("Critical Handshake Failure:", err);
       setIsProcessing(false);
-      setIsSuccess(true); // Proceed to success UI anyway to check the "Reset" loop
+      setIsSuccess(true); 
     }
   };
 
@@ -131,24 +131,28 @@ const AuditForm: React.FC<AuditFormProps> = ({ onAuditComplete }) => {
   };
 
   if (isSuccess) {
-    const whatsappMsg = `Hi, my session ID is ${sessionID}. I just requested an audit for ${formData.website}.`;
+    const whatsappMsg = `Hi, my session ID is ${sessionID}. I just submitted my website ${formData.website} for review.`;
     const whatsappLink = `https://wa.me/2347039723596?text=${encodeURIComponent(whatsappMsg)}`;
 
     return (
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-8 md:p-12 bg-white dark:bg-[#0f172a] border-2 border-midnight dark:border-white/10 rounded-[3rem] shadow-highlight relative overflow-hidden text-center">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-sunset" />
         <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mx-auto mb-6"><CheckCircle size={32} /></div>
-        <h3 className="text-xl md:text-2xl font-black text-midnight dark:text-white uppercase tracking-tighter mb-4">[ CONNECTED ]</h3>
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-10">Data transmitted successfully. Node ID: {sessionID}</p>
+        <h3 className="text-xl md:text-2xl font-black text-midnight dark:text-white uppercase tracking-tighter mb-4">[ DATA_RECEIVED ]</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-6 leading-relaxed">
+          Your parameters have been successfully logged. Our team is currently reviewing your profile and website. You will receive detailed feedback shortly via the contact channels provided.
+        </p>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-10">Tracking ID: {sessionID}</p>
+        
         <div className="space-y-4 max-w-sm mx-auto">
           <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="flex w-full py-5 bg-[#25D366] text-white rounded-2xl font-black uppercase text-xs tracking-widest items-center justify-center gap-3 shadow-xl hover:brightness-110 transition-all">
             <MessageSquare size={18} /> CONTACT VIA WHATSAPP
           </a>
-          <ScrollLink to={SectionId.Booking} smooth={true} offset={-80} onClick={resetFormLocal} className="w-full py-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 cursor-pointer hover:bg-sunset transition-all shadow-xl">
+          <ScrollLink to={SectionId.Booking} smooth={true} offset={-80} className="w-full py-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 cursor-pointer hover:bg-sunset transition-all shadow-xl">
             <Calendar size={18} /> BOOK STRATEGY SESSION
           </ScrollLink>
-          <button onClick={resetFormLocal} className="w-full py-5 bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-600 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 hover:text-red-500 transition-all">
-            <X size={18} /> RESET FORM
+          <button onClick={resetFormLocal} className="w-full py-4 text-slate-400 dark:text-slate-600 font-black uppercase text-[9px] tracking-widest flex items-center justify-center gap-2 hover:text-red-500 transition-all">
+            <X size={14} /> DISMISS
           </button>
         </div>
       </motion.div>
@@ -160,7 +164,7 @@ const AuditForm: React.FC<AuditFormProps> = ({ onAuditComplete }) => {
       <div className="flex items-center justify-between mb-8">
         <div className="flex flex-col">
           <div className="text-[10px] font-black uppercase tracking-[0.4em] text-sunset mb-1">{current.directive}</div>
-          <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-600">CONNECTION_TEST</div>
+          <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-600">AUDIT_PIPELINE</div>
         </div>
         <div className="flex items-center gap-2 text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-widest">STEP 0{step} / 04</div>
       </div>
@@ -180,7 +184,7 @@ const AuditForm: React.FC<AuditFormProps> = ({ onAuditComplete }) => {
           )}
           {current.type !== 'segmented' && (
             <button disabled={!current.valid || isProcessing} onClick={handleNext} className="w-full py-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 shadow-md">
-              {isProcessing ? <><Loader2 className="animate-spin" size={16} /><span>SYNCING...</span></> : 'CONTINUE'}
+              {isProcessing ? <><Loader2 className="animate-spin" size={16} /><span>LOGGING DATA...</span></> : 'CONTINUE'}
             </button>
           )}
         </motion.div>

@@ -1,9 +1,11 @@
+
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { FileSearch, Workflow, Layers, Activity, Terminal } from 'lucide-react';
 
 const steps = [
   { 
+    id: 'discovery',
     step: '01', 
     title: 'Discovery & Audit', 
     description: 'We perform a forensic review of your current conversion logic to determine immediate ROI. No guesswork, just raw data metrics.', 
@@ -16,6 +18,7 @@ const steps = [
     codeSnippet: 'const audit = analyze(target_url);\nif (audit.score < 80) {\n  identifyLeaks(audit.path);\n}'
   },
   { 
+    id: 'mapping',
     step: '02', 
     title: 'Core Logic Mapping', 
     description: 'Our engineers extract the DNA of your business into a high-performance behavioral framework designed for maximum LTV.', 
@@ -28,6 +31,7 @@ const steps = [
     codeSnippet: 'graph { \n  User -> Discovery;\n  Discovery -> Desire;\n  Desire -> Conversion;\n}'
   },
   { 
+    id: 'build',
     step: '03', 
     title: 'Engineered Build', 
     description: 'We deploy your new environment using a modern performance stack optimized for sub-second mobile rendering.', 
@@ -40,6 +44,7 @@ const steps = [
     codeSnippet: 'export const config = {\n  runtime: "edge",\n  regions: ["iad1", "sfo1"]\n};'
   },
   { 
+    id: 'telemetry',
     step: '04', 
     title: 'Live Telemetry', 
     description: 'Live telemetry tracks every interaction. We refine the logic-layer in real-time to maximize revenue output.', 
@@ -91,8 +96,8 @@ const Process: React.FC = () => {
         </motion.div>
 
         <div className="space-y-32 md:space-y-56">
-          {steps.map((item, index) => (
-            <div key={index} className="relative pl-10 md:pl-28">
+          {steps.map((item) => (
+            <div key={item.id} className="relative pl-10 md:pl-28">
                <div className="absolute top-0 left-24 md:left-32 hidden lg:block select-none pointer-events-none -z-10 opacity-[0.03]">
                   <span className="text-[14rem] xl:text-[18rem] font-black leading-none text-slate-900 dark:text-white" style={{ WebkitTextStroke: '2px currentColor', color: 'transparent' }}>
                     {item.step}
@@ -125,8 +130,8 @@ const Process: React.FC = () => {
                       </p>
 
                       <div className="space-y-4 md:space-y-5">
-                        {item.breakdown.map((bullet, bIdx) => (
-                          <div key={bIdx} className="flex items-center gap-4 md:gap-5">
+                        {item.breakdown.map((bullet) => (
+                          <div key={bullet} className="flex items-center gap-4 md:gap-5">
                              <div className="w-2 h-2 md:w-2.5 md:h-2.5 bg-electric rounded-full shadow-[0_0_12px_rgba(59,130,246,0.6)] shrink-0" />
                              <span className="text-[10px] md:text-sm font-black text-slate-400 dark:text-slate-300 uppercase tracking-widest leading-tight">
                                {bullet}
@@ -155,7 +160,7 @@ const Process: React.FC = () => {
                        <div className="bg-white dark:bg-midnight p-10 rounded-3xl border border-slate-100 dark:border-white/5 shadow-2xl overflow-hidden whitespace-pre font-mono leading-relaxed relative z-10">
                           <code className="text-slate-600 dark:text-electric font-bold text-sm">
                             {item.codeSnippet.split('\n').map((line, i) => (
-                              <div key={i} className="flex">
+                              <div key={`${item.id}-line-${i}`} className="flex">
                                 <span className="mr-6 text-slate-300 dark:text-slate-800 select-none">{String(i + 1).padStart(2, '0')}</span>
                                 <span>{line}</span>
                               </div>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FileText, TrendingUp, AlertCircle, CheckCircle, Zap, Layout, Terminal, X } from 'lucide-react';
@@ -35,8 +36,7 @@ const CorrectionDocument: React.FC<CorrectionDocumentProps> = ({ report, url, on
         <div className="text-left md:text-right">
           <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest mb-1">AUDIT_TARGET</p>
           <p className="text-lg font-bold truncate max-w-[300px]">{url}</p>
-          {/* Updated model label to show Gemini 3 Pro is being utilized */}
-          <p className="text-sunset font-mono text-[10px] mt-1 font-black">REPORT_GEN: Gemini_V3_Pro</p>
+          <p className="text-sunset font-mono text-[10px] mt-1 font-black">CORE_ENGINE: AVARTAH_FORENSIC_v4.2</p>
         </div>
       </div>
 

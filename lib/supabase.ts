@@ -1,15 +1,27 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Credentials fetched from environment variables.
+/**
+ * Super Base Connection Node
+ * Strictly utilizes environment variables for backend synchronization.
+ */
 export const supabaseUrl = process.env.SUPABASE_URL || '';
 export const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 
-// Logic to check if Supabase is actually configured
-export const isSupabaseConfigured = !!supabaseUrl && !!supabaseAnonKey && supabaseUrl.startsWith('http');
+// Backend Status Check
+export const isSupabaseConfigured = 
+  !!supabaseUrl && 
+  !!supabaseAnonKey && 
+  supabaseUrl.startsWith('http');
 
-// Safe Initialization: Use a dummy URL if keys are missing to prevent library crashes
+// Safe Initialization Protocol
+// Prevents client-side crashes while maintaining a reference for the API bridge.
 const safeUrl = isSupabaseConfigured ? supabaseUrl : 'https://placeholder.supabase.co';
 const safeKey = isSupabaseConfigured ? supabaseAnonKey : 'placeholder';
 
-export const supabase = createClient(safeUrl, safeKey);
+export const supabase = createClient(safeUrl, safeKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  }
+});
