@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import AuditForm from './AuditForm';
@@ -10,19 +9,19 @@ const Hero: React.FC = () => {
   return (
     <div 
       onMouseEnter={() => analytics.logCTAClick('hero')}
-      className="relative min-h-[85vh] md:min-h-screen flex items-center justify-center px-4 md:px-8 pt-24 md:pt-32 lg:pt-40 pb-16 md:pb-24 overflow-hidden bg-white dark:bg-[#020617] transition-colors duration-500"
+      className="relative min-h-[500px] sm:min-h-[85vh] md:min-h-screen flex items-start sm:items-center justify-center px-4 md:px-8 pt-24 sm:pt-24 md:pt-32 lg:pt-40 pb-16 md:pb-24 overflow-hidden bg-white dark:bg-[#020617] transition-colors duration-500"
     >
       <div className="absolute inset-0 cyber-grid pointer-events-none opacity-50" />
       
       <div className="max-w-[1500px] mx-auto w-full z-10 relative">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 lg:gap-20 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 lg:gap-20 items-start sm:items-center">
           
           {/* Main Headline Pillar */}
           <div className="lg:col-span-8 flex flex-col justify-center">
             <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3 mb-4 md:mb-6"
+              className="flex items-center gap-3 mb-3 md:mb-6"
             >
               <div className="w-6 md:w-8 h-px bg-sunset" />
               <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-500">

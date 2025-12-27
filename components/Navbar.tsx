@@ -31,11 +31,11 @@ const Navbar: React.FC = () => {
     <nav className={`fixed top-0 left-0 w-full z-[100] transition-all duration-500 ${
       isScrolled 
         ? 'py-3 bg-slate-950/95 backdrop-blur-xl border-b border-white/5 shadow-2xl' 
-        : 'py-6 bg-slate-950/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none'
+        : 'py-4 md:py-6 bg-slate-950 md:bg-transparent backdrop-blur-md md:backdrop-blur-none'
     }`}>
       <div className="max-w-[1500px] mx-auto px-6 flex items-center justify-between">
         <div className="flex items-center gap-3 group cursor-pointer" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
-          <div className="w-8 h-8 rounded-lg bg-sunset flex items-center justify-center text-white font-black text-[10px] shadow-[0_0_15px_rgba(249,115,22,0.3)] group-hover:scale-110 transition-transform">A</div>
+          <div className="w-8 h-8 rounded-lg bg-sunset flex items-center justify-center text-white font-black text-[10px] shadow-[0_0_15px_rgba(249,115,22,0.4)] group-hover:scale-110 transition-transform">A</div>
           <span className="text-xl font-black tracking-tighter uppercase text-white group-hover:text-sunset transition-colors">AVARTAH</span>
         </div>
 
