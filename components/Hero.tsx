@@ -9,19 +9,19 @@ const Hero: React.FC = () => {
   return (
     <div 
       onMouseEnter={() => analytics.logCTAClick('hero')}
-      className="relative min-h-[500px] sm:min-h-[85vh] md:min-h-screen flex items-start sm:items-center justify-center px-4 md:px-8 pt-24 sm:pt-24 md:pt-32 lg:pt-40 pb-16 md:pb-24 overflow-hidden bg-white dark:bg-[#020617] transition-colors duration-500"
+      className="relative min-h-0 lg:min-h-screen flex items-start lg:items-center justify-center px-4 md:px-8 pt-24 md:pt-32 lg:pt-40 pb-16 md:pb-24 overflow-hidden bg-white dark:bg-[#020617] transition-colors duration-500"
     >
       <div className="absolute inset-0 cyber-grid pointer-events-none opacity-50" />
       
       <div className="max-w-[1500px] mx-auto w-full z-10 relative">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 lg:gap-20 items-start sm:items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-20 items-start">
           
           {/* Main Headline Pillar */}
           <div className="lg:col-span-8 flex flex-col justify-center">
             <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3 mb-3 md:mb-6"
+              className="flex items-center gap-3 mb-2 sm:mb-4"
             >
               <div className="w-6 md:w-8 h-px bg-sunset" />
               <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-500">
@@ -33,21 +33,21 @@ const Hero: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-[4.2rem] xl:text-[5rem] font-[900] leading-[1.1] tracking-[-0.03em] text-midnight dark:text-white mb-6 md:mb-8 lg:mb-10"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-[4.2rem] xl:text-[5rem] font-[900] leading-[1.1] tracking-[-0.03em] text-midnight dark:text-white mb-4 sm:mb-8 lg:mb-10"
             >
               From <span className="font-serif-italic text-sunset">Sketch</span> to Scale <br />
               I Build the Web <br />
               You <span className="font-serif-italic text-electric">Imagine</span>
             </motion.h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 lg:gap-12 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 lg:gap-12 items-start">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 1, delay: 0.4 }}
                 className="order-2 md:order-1"
               >
-                <p className="text-sm md:text-base lg:text-lg text-slate-500 dark:text-slate-400 leading-relaxed font-medium mb-6 md:mb-8 lg:mb-10 max-w-sm">
+                <p className="text-sm md:text-base lg:text-lg text-slate-500 dark:text-slate-400 leading-relaxed font-medium mb-4 sm:mb-10 max-w-sm">
                   Stop losing customers to bad design. Get a logic-based audit and transform your digital presence today.
                 </p>
                 
