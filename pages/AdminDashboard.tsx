@@ -12,6 +12,15 @@ import { getLeads, updateLeadStatus, getAnalytics, deleteLead } from '../lib/moc
 import { isAuthenticated, logout } from '../lib/auth';
 import { isSupabaseConfigured } from '../lib/supabase';
 
+// High-fidelity mapping for revenue tiers as defined in the Audit Protocol
+const TIER_DISPLAY_MAP: Record<string, string> = {
+  'ALPHA': '$300 - $1,000',
+  'BETA': '$1,000 - $3,000',
+  'GAMMA': '$3,000 - $5,000+',
+  'ULTRA': '$10,000+',
+  'PRO': '$5,000 - $10,000'
+};
+
 const WeeklySummary: React.FC<{ data: SiteAnalytics[]; leads: Lead[] }> = ({ data, leads }) => {
   const stats = useMemo(() => {
     const last7Days = data.filter(d => {
@@ -25,12 +34,13 @@ const WeeklySummary: React.FC<{ data: SiteAnalytics[]; leads: Lead[] }> = ({ dat
     const totalDuration = last7Days.reduce((acc, curr) => acc + (curr.duration_seconds || 0), 0);
     const avgDuration = totalVisitors > 0 ? Math.round(totalDuration / totalVisitors) : 0;
     
-    // Revenue projection logic based on Tier Handshake
+    // Logic-driven Revenue Projection
     const projectedRevenue = leads.reduce((acc, curr) => {
       const tier = curr.revenue_tier?.toUpperCase() || '';
-      if (tier.includes('GAMMA')) return acc + 5000;
-      if (tier.includes('BETA')) return acc + 2000;
-      return acc + 500;
+      if (tier.includes('GAMMA')) return acc + 4000; // Median of $3k-$5k+
+      if (tier.includes('BETA')) return acc + 2000;  // Median of $1k-$3k
+      if (tier.includes('ALPHA')) return acc + 650;  // Median of $300-$1k
+      return acc + 150;
     }, 0);
 
     return {
@@ -88,8 +98,8 @@ const AdminDashboard: React.FC = () => {
       setLeads(leadsRes);
       setAnalyticsData(analyticsRes);
     } catch (err) {
-      console.error("Backend Sync Protocol Fault:", err);
-      showToast("LEDGER_SYNC_ERROR", "error");
+      console.error("Backend Ledger Sync Fault:", err);
+      showToast("SYNC_FAILURE", "error");
     } finally {
       setLoading(false);
     }
@@ -114,18 +124,18 @@ const AdminDashboard: React.FC = () => {
       showToast("STATUS_COMMITTED");
       fetchData();
     } catch (e) {
-      showToast("UPDATE_PROTOCOL_FAULT", "error");
+      showToast("UPDATE_FAULT", "error");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('CONFIRM_PERMANENT_RECORD_PURGE?')) {
+    if (confirm('CONFIRM_PERMANENT_PURGE?')) {
       try {
         await deleteLead(id);
-        showToast("DATA_NODE_DELETED");
+        showToast("NODE_PURGED");
         fetchData();
       } catch (e) {
-        showToast("PURGE_PROTOCOL_FAULT", "error");
+        showToast("PURGE_FAULT", "error");
       }
     }
   };
@@ -200,7 +210,6 @@ const AdminDashboard: React.FC = () => {
       <main className="max-w-[1600px] mx-auto">
         <WeeklySummary data={analyticsData} leads={leads} />
 
-        {/* Filter Toolbar */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="md:col-span-2 relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -231,7 +240,7 @@ const AdminDashboard: React.FC = () => {
                   <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">SESSION_ID</th>
                   <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">TARGET_DOMAIN</th>
                   <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">EMAIL_CONTACT</th>
-                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">TIER</th>
+                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">REVENUE_TIER</th>
                   <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">STATUS</th>
                   <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">ACTIONS</th>
                 </tr>
@@ -243,12 +252,15 @@ const AdminDashboard: React.FC = () => {
                     <td className="px-8 py-6 text-[11px] font-bold text-midnight dark:text-white uppercase truncate max-w-[200px]">{lead.target_url}</td>
                     <td className="px-8 py-6 text-[11px] font-bold text-midnight dark:text-white">{lead.user_email}</td>
                     <td className="px-8 py-6">
-                      <span className="text-[9px] font-black px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 uppercase tracking-widest">{lead.revenue_tier}</span>
+                      <span className="text-[9px] font-black px-3 py-1.5 rounded bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white uppercase tracking-widest border border-slate-200 dark:border-white/10">
+                        {TIER_DISPLAY_MAP[lead.revenue_tier] || lead.revenue_tier || 'N/A'}
+                      </span>
                     </td>
                     <td className="px-8 py-6">
                        <select value={lead.status} onChange={(e) => handleStatusChange(lead.id, e.target.value as Lead['status'])} className="text-[9px] font-black bg-transparent border-none outline-none text-sunset uppercase tracking-widest cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 p-1 rounded transition-all">
                          <option value="pending">PENDING</option>
                          <option value="contacted">CONTACTED</option>
+                         <option value="audit_delivered">AUDIT_DELIVERED</option>
                          <option value="closed">CLOSED</option>
                        </select>
                     </td>

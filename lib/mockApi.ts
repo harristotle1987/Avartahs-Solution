@@ -34,7 +34,7 @@ export const getLeads = async (): Promise<Lead[]> => {
       .order('created_at', { ascending: false });
 
     if (!error && data) return data as Lead[];
-    console.warn('Supabase Fetch Node Offline, falling back to local.');
+    console.warn('Supabase Node Unreachable. Utilizing local ledger cache.');
   }
   return getLocalData('avartah_audit_submissions');
 };
@@ -56,6 +56,7 @@ export const getAnalytics = async (): Promise<SiteAnalytics[]> => {
 
 /**
  * SAVE: LEAD DATA
+ * Centralized handshake point for Audit Submissions
  */
 export const saveLead = async (data: any): Promise<any> => {
   const newLead = {
@@ -64,23 +65,28 @@ export const saveLead = async (data: any): Promise<any> => {
     user_email: data.user_email,
     user_phone: data.user_phone,
     revenue_tier: data.revenue_tier,
-    core_problem: data.core_problem || "PENDING_ANALYSIS",
-    cta_source: data.cta_source || 'direct',
+    core_problem: data.core_problem || "INITIAL_SCAN_PENDING",
+    cta_source: data.cta_source || 'direct_v4',
     status: 'pending',
     created_at: new Date().toISOString()
   };
 
   if (isSupabaseConfigured) {
-    const { data: saved, error } = await supabase
-      .from('audit_submissions')
-      .insert([newLead])
-      .select()
-      .single();
-    
-    if (!error) return saved;
+    try {
+      const { data: saved, error } = await supabase
+        .from('audit_submissions')
+        .insert([newLead])
+        .select()
+        .single();
+      
+      if (!error) return saved;
+      console.error('Supabase Persist Logic Error:', error);
+    } catch (e) {
+      console.error('Supabase Connectivity Exception:', e);
+    }
   }
 
-  // Local Failover
+  // Local Persistence Failover
   const localLead = { id: generateUUID(), ...newLead };
   const leads = getLocalData('avartah_audit_submissions');
   setLocalData('avartah_audit_submissions', [localLead, ...leads]);
