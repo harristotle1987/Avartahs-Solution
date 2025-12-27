@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
-// Added Terminal to imports to fix error on line 144
 import { FileSearch, Workflow, Layers, Activity, Terminal } from 'lucide-react';
 
 const steps = [
@@ -93,9 +92,9 @@ const Process: React.FC = () => {
 
         <div className="space-y-32 md:space-y-56">
           {steps.map((item, index) => (
-            <div key={index} className="relative pl-14 md:pl-28">
+            <div key={index} className="relative pl-10 md:pl-28">
                <div className="absolute top-0 left-24 md:left-32 hidden lg:block select-none pointer-events-none -z-10 opacity-[0.03]">
-                  <span className="text-[18rem] font-black leading-none text-slate-900 dark:text-white" style={{ WebkitTextStroke: '2px currentColor', color: 'transparent' }}>
+                  <span className="text-[14rem] xl:text-[18rem] font-black leading-none text-slate-900 dark:text-white" style={{ WebkitTextStroke: '2px currentColor', color: 'transparent' }}>
                     {item.step}
                   </span>
                 </div>
@@ -108,24 +107,30 @@ const Process: React.FC = () => {
                     transition={{ duration: 0.8, ease: "easeOut" }}
                     className="flex-1 w-full"
                   >
-                    <div className="bg-white dark:bg-[#020617] border border-slate-200 dark:border-white/10 p-10 md:p-14 rounded-[3.5rem] shadow-lab hover:border-sunset/40 transition-all duration-500 group">
-                      <div className="flex items-center gap-6 mb-10">
-                        <div className="p-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-2xl shadow-xl group-hover:scale-110 transition-transform">
+                    <div className="bg-white dark:bg-[#020617] border border-slate-200 dark:border-white/10 p-8 md:p-14 rounded-[2.5rem] md:rounded-[3.5rem] shadow-lab hover:border-sunset/40 transition-all duration-500 group">
+                      <div className="flex items-center gap-4 md:gap-6 mb-8 md:mb-10">
+                        <div className="p-4 md:p-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-2xl shadow-xl group-hover:scale-110 transition-transform shrink-0">
                           {item.icon}
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black uppercase tracking-[0.5em] text-sunset mb-2">Phase {item.step}</span>
-                          <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-midnight dark:text-white leading-none">{item.title}</h3>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.5em] text-sunset mb-2">Phase {item.step}</span>
+                          <h3 className="text-lg sm:text-2xl md:text-4xl font-black uppercase tracking-tighter text-midnight dark:text-white leading-[1.1] break-words">
+                            {item.title}
+                          </h3>
                         </div>
                       </div>
                       
-                      <p className="text-slate-500 dark:text-slate-400 text-lg md:text-xl leading-relaxed font-medium mb-10">{item.description}</p>
+                      <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base md:text-xl leading-relaxed font-medium mb-8 md:mb-10">
+                        {item.description}
+                      </p>
 
-                      <div className="space-y-5">
+                      <div className="space-y-4 md:space-y-5">
                         {item.breakdown.map((bullet, bIdx) => (
-                          <div key={bIdx} className="flex items-center gap-5">
-                             <div className="w-2.5 h-2.5 bg-electric rounded-full shadow-[0_0_12px_rgba(59,130,246,0.6)]" />
-                             <span className="text-xs md:text-sm font-black text-slate-400 dark:text-slate-300 uppercase tracking-widest leading-none">{bullet}</span>
+                          <div key={bIdx} className="flex items-center gap-4 md:gap-5">
+                             <div className="w-2 h-2 md:w-2.5 md:h-2.5 bg-electric rounded-full shadow-[0_0_12px_rgba(59,130,246,0.6)] shrink-0" />
+                             <span className="text-[10px] md:text-sm font-black text-slate-400 dark:text-slate-300 uppercase tracking-widest leading-tight">
+                               {bullet}
+                             </span>
                           </div>
                         ))}
                       </div>

@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
@@ -24,15 +25,15 @@ const StatsBar: React.FC = () => {
   ];
 
   return (
-    <div className="py-12 border-y border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01]">
-      <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 lg:grid-cols-4 gap-8">
+    <div className="py-8 md:py-10 lg:py-12 border-y border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01]">
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
         {stats.map((s, i) => (
           <div key={i} className="flex flex-col items-center lg:items-start text-center lg:text-left">
             <div className="flex items-center gap-2 mb-2">
               {s.icon}
               <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600">{s.label}</span>
             </div>
-            <div className="text-2xl md:text-4xl font-black text-midnight dark:text-white tracking-tighter">{s.value}</div>
+            <div className="text-2xl md:text-3xl lg:text-4xl font-black text-midnight dark:text-white tracking-tighter">{s.value}</div>
           </div>
         ))}
       </div>
@@ -59,11 +60,11 @@ const LandingPage: React.FC = () => {
 
         <StatsBar />
 
-        <section id={SectionId.Services} className="py-24 px-6 bg-white dark:bg-[#020617]">
+        <section id={SectionId.Services} className="py-16 md:py-20 lg:py-24 px-6 bg-white dark:bg-[#020617]">
           <div className="max-w-7xl mx-auto">
-            <div className="mb-20 text-center">
+            <div className="mb-12 md:mb-16 lg:mb-20 text-center">
               <span className="text-[10px] font-black text-sunset uppercase tracking-[0.4em] mb-4 block">Skills & Tech Stack</span>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight uppercase text-midnight dark:text-white">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight uppercase text-midnight dark:text-white">
                 My Tech <span className="font-serif-italic text-sunset">Toolbox</span>
               </h2>
             </div>
@@ -73,59 +74,59 @@ const LandingPage: React.FC = () => {
 
         <TechMarquee />
 
-        <section id={SectionId.Process} className="py-24 px-6 bg-slate-50/50 dark:bg-white/[0.02] border-y border-slate-100 dark:border-white/5">
+        <section id={SectionId.Process} className="py-16 md:py-20 lg:py-24 px-6 bg-slate-50/50 dark:bg-white/[0.02] border-y border-slate-100 dark:border-white/5">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-24">
-               <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase mb-6 leading-[0.8] text-midnight dark:text-white">The <span className="text-sunset italic">Pipeline</span></h2>
-               <p className="text-slate-500 dark:text-slate-400 text-lg md:text-xl font-medium tracking-tight">Rapid deployment from discovery to launch.</p>
+            <div className="text-center mb-16 md:mb-20 lg:mb-24">
+               <h2 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter uppercase mb-6 leading-[0.8] text-midnight dark:text-white">The <span className="text-sunset italic">Pipeline</span></h2>
+               <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg lg:text-xl font-medium tracking-tight">Rapid deployment from discovery to launch.</p>
             </div>
             <Process />
           </div>
         </section>
 
-        <section className="py-24 px-6 bg-white dark:bg-[#020617]">
+        <section className="py-16 md:py-20 lg:py-24 px-6 bg-white dark:bg-[#020617]">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-20">
+            <div className="text-center mb-12 md:mb-16 lg:mb-20">
                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 mb-6 block">Featured Projects</span>
-               <h2 className="text-4xl md:text-6xl font-black tracking-tighter uppercase mb-8 leading-[1.1] text-midnight dark:text-white">
+               <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter uppercase mb-6 md:mb-8 leading-[1.1] text-midnight dark:text-white">
                  Design Brands That <br/>
                  <span className="text-sunset font-serif-italic">Speak</span> To Audiences
                </h2>
-               <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg font-medium max-w-2xl mx-auto leading-relaxed">High-conversion rebuilds for modern business partners.</p>
+               <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base lg:text-lg font-medium max-w-2xl mx-auto leading-relaxed">High-conversion rebuilds for modern business partners.</p>
             </div>
             <Portfolio />
           </div>
         </section>
 
-        <section className="py-24 px-6 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01]">
-           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-24 items-start">
+        <section className="py-16 md:py-20 lg:py-24 px-6 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01]">
+           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 md:gap-20 lg:gap-24 items-start">
              <div>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-16 text-midnight dark:text-white">What <br/><span className="text-sunset italic">Clients Say</span></h2>
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-12 md:mb-16 text-midnight dark:text-white">What <br/><span className="text-sunset italic">Clients Say</span></h2>
                 <Reviews />
              </div>
              <div>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-16 text-midnight dark:text-white">Common <br/><span className="text-electric italic">Questions</span></h2>
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-12 md:mb-16 text-midnight dark:text-white">Common <br/><span className="text-electric italic">Questions</span></h2>
                 <FAQ />
              </div>
            </div>
         </section>
 
-        <section id={SectionId.Booking} className="relative py-24 px-6 bg-white dark:bg-[#020617] overflow-hidden border-t border-slate-100 dark:border-white/5">
+        <section id={SectionId.Booking} className="relative py-16 md:py-20 lg:py-24 px-6 bg-white dark:bg-[#020617] overflow-hidden border-t border-slate-100 dark:border-white/5">
            <div className="max-w-7xl mx-auto relative z-10">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-16 items-center">
                 <div className="text-left">
-                  <div className="flex items-center gap-1 mb-8">
+                  <div className="flex items-center gap-1 mb-6 md:mb-8">
                     {[1, 2, 3, 4, 5].map((i) => (
                       <Star key={i} size={14} className="fill-sunset text-sunset" />
                     ))}
                     <span className="ml-3 text-midnight dark:text-white font-black text-[10px] uppercase tracking-widest">VERIFIED 5-STAR RATING</span>
                   </div>
 
-                  <h2 className="text-4xl md:text-6xl font-black tracking-tighter uppercase text-midnight dark:text-white mb-8 leading-[0.9]">
+                  <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter uppercase text-midnight dark:text-white mb-6 md:mb-8 leading-[0.9]">
                     Let's Build <br/><span className="text-sunset italic">Something Amazing</span>
                   </h2>
                   
-                  <p className="text-slate-500 dark:text-slate-400 text-lg font-medium mb-12 max-w-lg leading-relaxed">
+                  <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg font-medium mb-10 md:mb-12 max-w-lg leading-relaxed">
                     Have a project, idea, or collaboration in mind? I'd love to hear from you. Let's create something impactful together.
                   </p>
 

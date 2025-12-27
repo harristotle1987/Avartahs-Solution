@@ -14,9 +14,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('avartah-theme');
-      return (saved as Theme) || 'light';
+      // Set 'dark' as default if no theme is saved
+      return (saved as Theme) || 'dark';
     }
-    return 'light';
+    return 'dark';
   });
 
   useEffect(() => {
