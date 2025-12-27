@@ -1,10 +1,16 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, ShieldCheck, Clock } from 'lucide-react';
 import AuditForm from './AuditForm';
 import { analytics } from '../lib/analytics';
+import { AuditReport } from '../lib/gemini';
 
-const FinalCTA: React.FC = () => {
+interface FinalCTAProps {
+  onAuditComplete?: (report: AuditReport, url: string) => void;
+}
+
+const FinalCTA: React.FC<FinalCTAProps> = ({ onAuditComplete }) => {
   return (
     <div 
       onMouseEnter={() => analytics.logCTAClick('footer')}
@@ -50,8 +56,7 @@ const FinalCTA: React.FC = () => {
           className="w-full max-w-5xl mx-auto mb-16"
         >
           <div className="relative">
-            {/* Form component now has white border inside a dark section */}
-            <AuditForm />
+            <AuditForm onAuditComplete={onAuditComplete} />
           </div>
         </motion.div>
 

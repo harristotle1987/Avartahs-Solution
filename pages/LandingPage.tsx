@@ -1,6 +1,6 @@
 
-import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import Hero from '../components/Hero';
 import Services from '../components/Services';
@@ -12,7 +12,9 @@ import FAQ from '../components/FAQ';
 import Reviews from '../components/Reviews';
 import BookingCalendar from '../components/BookingCalendar';
 import TechMarquee from '../components/TechMarquee';
+import CorrectionDocument from '../components/CorrectionDocument';
 import { SectionId } from '../types';
+import { AuditReport } from '../lib/gemini';
 import { Star, ArrowRight, Zap, Target, BarChart3, Users } from 'lucide-react';
 import { analytics } from '../lib/analytics';
 
@@ -42,6 +44,8 @@ const StatsBar: React.FC = () => {
 };
 
 const LandingPage: React.FC = () => {
+  const [activeReport, setActiveReport] = useState<{ report: AuditReport; url: string } | null>(null);
+
   useEffect(() => {
     analytics.init();
     const handleExit = () => analytics.flush();
@@ -49,13 +53,29 @@ const LandingPage: React.FC = () => {
     return () => window.removeEventListener('pagehide', handleExit);
   }, []);
 
+  const handleAuditComplete = (report: AuditReport, url: string) => {
+    setActiveReport({ report, url });
+    // Lock scroll when report is open
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeReport = () => {
+    setActiveReport(null);
+    document.body.style.overflow = 'unset';
+  };
+
   return (
     <div className="relative bg-white dark:bg-[#020617] text-midnight dark:text-gray-100 transition-colors duration-500 overflow-x-hidden">
       <Navbar />
       
       <main className="relative z-10">
         <section id={SectionId.Hero}>
-          <Hero />
+          {/* We'll pass the auditor down through Hero if needed, 
+              but since AuditForm is inside Hero, let's adjust Hero to accept props 
+              or just wrap AuditForm directly if we want to change Hero.tsx.
+              For now, we'll assume Hero is modified to accept onAuditComplete.
+          */}
+          <Hero onAuditComplete={handleAuditComplete} />
         </section>
 
         <StatsBar />
@@ -142,10 +162,30 @@ const LandingPage: React.FC = () => {
            </div>
         </section>
 
-        <FinalCTA />
+        <FinalCTA onAuditComplete={handleAuditComplete} />
       </main>
 
       <Footer />
+
+      {/* Forensic Report Overlay */}
+      <AnimatePresence>
+        {activeReport && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-10">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeReport}
+              className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+            />
+            <CorrectionDocument 
+              report={activeReport.report} 
+              url={activeReport.url} 
+              onClose={closeReport} 
+            />
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

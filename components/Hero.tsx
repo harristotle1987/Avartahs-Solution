@@ -1,11 +1,17 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import AuditForm from './AuditForm';
 import { SectionId } from '../types';
 import { analytics } from '../lib/analytics';
 import { ArrowDownRight } from 'lucide-react';
+import { AuditReport } from '../lib/gemini';
 
-const Hero: React.FC = () => {
+interface HeroProps {
+  onAuditComplete?: (report: AuditReport, url: string) => void;
+}
+
+const Hero: React.FC<HeroProps> = ({ onAuditComplete }) => {
   return (
     <div 
       onMouseEnter={() => analytics.logCTAClick('hero')}
@@ -77,7 +83,7 @@ const Hero: React.FC = () => {
                   <div className="absolute -top-6 -left-6 md:-top-8 md:-left-8 opacity-10 pointer-events-none dark:opacity-5">
                     <ArrowDownRight size={60} className="text-midnight dark:text-white md:w-[80px] md:h-[80px]" />
                   </div>
-                  <AuditForm />
+                  <AuditForm onAuditComplete={onAuditComplete} />
                 </div>
               </motion.div>
             </div>
