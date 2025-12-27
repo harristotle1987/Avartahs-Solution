@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ArrowRight, Sun, Moon, MessageCircle } from 'lucide-react';
@@ -150,7 +151,7 @@ const Navbar: React.FC = () => {
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-3 py-4 bg-[#25D366] text-white rounded-2xl font-black text-xs uppercase tracking-widest"
                 >
-                  WhatsApp Bridge <MessageCircle size={16} />
+                  WhatsApp <MessageCircle size={16} />
                 </a>
               </div>
             </div>

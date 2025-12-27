@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
 export interface AuditReport {
@@ -13,42 +14,46 @@ export interface AuditReport {
 }
 
 export const generateAuditReport = async (url: string, challenge: string): Promise<AuditReport> => {
-  // Use API key directly from process.env as per coding guidelines
-  if (!process.env.API_KEY) {
-    throw new Error("Gemini API_KEY is not configured.");
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API_KEY_NOT_FOUND");
   }
 
-  // Initializing with named parameter as required by the latest SDK
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   
-  const response = await ai.models.generateContent({
-    // Upgraded to gemini-3-pro-preview for complex reasoning tasks like conversion audits
-    model: "gemini-3-pro-preview",
-    contents: `Analyze this website: ${url}. Main business challenge: ${challenge}. Perform a forensic conversion audit.`,
-    config: {
-      systemInstruction: "You are a senior conversion rate optimization engineer and full-stack architect. Provide a high-density, forensic technical audit. Be critical and data-focused.",
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          score: { type: Type.STRING, description: "Letter grade from A to F" },
-          revenueLeak: { type: Type.STRING, description: "Dollar amount or percentage of estimated lost revenue" },
-          summary: { type: Type.STRING },
-          bottleneck: { type: Type.STRING, description: "The primary technical or logic bottleneck" },
-          uxFailure: { type: Type.STRING, description: "A specific UI/UX logic failure" },
-          messagingFailure: { type: Type.STRING },
-          immediateFix: { type: Type.STRING },
-          shortTermFix: { type: Type.STRING },
-          longTermFix: { type: Type.STRING }
+  try {
+    const response = await ai.models.generateContent({
+      // Upgrading to Pro for complex reasoning and forensic depth
+      model: "gemini-3-pro-preview",
+      contents: `Perform a deep conversion forensic audit for ${url}. Context: ${challenge}. Identify revenue leaks and UI/UX friction points.`,
+      config: {
+        systemInstruction: "You are a senior conversion engineer and revenue architect. Output a critical, high-fidelity audit in strict JSON format. Be blunt and data-driven.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            score: { type: Type.STRING, description: "Letter grade A-F" },
+            revenueLeak: { type: Type.STRING, description: "Estimated monthly loss in USD" },
+            summary: { type: Type.STRING },
+            bottleneck: { type: Type.STRING },
+            uxFailure: { type: Type.STRING },
+            messagingFailure: { type: Type.STRING },
+            immediateFix: { type: Type.STRING },
+            shortTermFix: { type: Type.STRING },
+            longTermFix: { type: Type.STRING }
+          },
+          required: ["score", "revenueLeak", "summary", "bottleneck", "uxFailure", "messagingFailure", "immediateFix", "shortTermFix", "longTermFix"]
         },
-        required: ["score", "revenueLeak", "summary", "bottleneck", "uxFailure", "messagingFailure", "immediateFix", "shortTermFix", "longTermFix"]
+        thinkingConfig: { thinkingBudget: 4000 }
       }
-    }
-  });
+    });
 
-  // Extracting text directly using .text property as per guidelines
-  const text = response.text;
-  if (!text) throw new Error("AI failed to generate report.");
-  
-  return JSON.parse(text) as AuditReport;
+    const cleanedJson = response.text.replace(/```json|```/g, "").trim();
+    if (!cleanedJson) throw new Error("EMPTY_AI_RESPONSE");
+
+    return JSON.parse(cleanedJson) as AuditReport;
+  } catch (error) {
+    console.error("Gemini Forensic Handshake Failed:", error);
+    throw error;
+  }
 };
