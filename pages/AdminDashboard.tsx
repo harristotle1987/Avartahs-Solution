@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, LogOut, Search, Terminal, Activity, ArrowUpDown, Clock, 
   CheckCircle2, BarChart3, History, Zap, ChevronDown, ChevronUp, 
-  ExternalLink, Trash2, Loader2, Globe, Database
+  ExternalLink, Trash2, Loader2, Globe, Database, MousePointer2, TrendingUp
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Lead, SiteAnalytics } from '../types';
@@ -19,6 +19,123 @@ const TIER_DISPLAY_MAP: Record<string, string> = {
   'GAMMA': '$3,000 - $5,000+',
   'ULTRA': '$10,000+',
   'PRO': '$5,000 - $10,000'
+};
+
+const AnalyticsView: React.FC<{ data: SiteAnalytics[] }> = ({ data }) => {
+  const stats = useMemo(() => {
+    const total = data.length;
+    if (total === 0) return { total: 0, avgDuration: 0, completionRate: 0, escalationRate: 0 };
+    
+    const avgDuration = data.reduce((acc, curr) => acc + (curr.duration_seconds || 0), 0) / total;
+    const completed = data.filter(d => d.submitted).length;
+    const completionRate = (completed / total) * 100;
+    
+    const escalations = data.filter(d => d.whatsapp_handshake || d.calendly_handshake).length;
+    const escalationRate = (escalations / total) * 100;
+    
+    return {
+      total,
+      avgDuration: Math.round(avgDuration),
+      completionRate: Math.round(completionRate),
+      escalationRate: Math.round(escalationRate)
+    };
+  }, [data]);
+
+  const funnelData = useMemo(() => {
+    const steps = [1, 2, 3, 4];
+    return steps.map(step => ({
+      step,
+      count: data.filter(d => (d.form_progress || 0) >= step).length
+    }));
+  }, [data]);
+
+  const maxStepCount = Math.max(...funnelData.map(d => d.count), 1);
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* KPI Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+        {[
+          { label: 'Network Nodes', value: stats.total, icon: <Globe size={18} />, color: 'text-electric' },
+          { label: 'Avg Latency', value: `${stats.avgDuration}s`, icon: <Clock size={18} />, color: 'text-sunset' },
+          { label: 'Success Rate', value: `${stats.completionRate}%`, icon: <CheckCircle2 size={18} />, color: 'text-green-500' },
+          { label: 'Escalation Node', value: `${stats.escalationRate}%`, icon: <Zap size={18} />, color: 'text-electric' }
+        ].map((kpi, i) => (
+          <div key={i} className="p-5 md:p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm">
+            <div className={`${kpi.color} mb-4`}>{kpi.icon}</div>
+            <div className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{kpi.label}</div>
+            <div className="text-xl md:text-3xl font-black text-midnight dark:text-white tracking-tighter">{kpi.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+        {/* Funnel Chart */}
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between mb-10">
+            <div>
+              <h3 className="text-midnight dark:text-white text-sm md:text-lg font-black tracking-tighter uppercase mb-1">Conversion Funnel</h3>
+              <p className="text-[8px] md:text-[9px] font-bold text-slate-400 tracking-[0.2em] uppercase">User distribution across audit modules</p>
+            </div>
+            <BarChart3 className="text-sunset" size={20} />
+          </div>
+
+          <div className="flex items-end justify-between gap-2 md:gap-4 h-48 md:h-64 px-2">
+            {funnelData.map((d, i) => {
+              const height = (d.count / maxStepCount) * 100;
+              return (
+                <div key={d.step} className="flex-1 flex flex-col items-center gap-3">
+                  <div className="relative w-full flex-1 flex flex-col justify-end bg-slate-50 dark:bg-white/5 rounded-t-xl overflow-hidden">
+                    <motion.div 
+                      initial={{ height: 0 }}
+                      animate={{ height: `${height}%` }}
+                      transition={{ duration: 1, delay: i * 0.1 }}
+                      className="w-full bg-electric/20 border-t-2 border-electric"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-midnight/40 text-white text-[10px] font-black">
+                      {d.count}
+                    </div>
+                  </div>
+                  <div className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Step 0{d.step}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Traffic Log */}
+        <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-8 flex flex-col shadow-sm max-h-[400px] md:max-h-full">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-midnight dark:text-white text-[10px] md:text-sm font-black tracking-tighter uppercase">Recent Activity</h3>
+            <History size={16} className="text-electric animate-pulse" />
+          </div>
+          
+          <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+            {data.slice(0, 10).map((session, i) => (
+              <div 
+                key={session.visitor_id + i}
+                className="p-3 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-xl flex flex-col gap-1"
+              >
+                <div className="flex justify-between items-center">
+                  <span className="text-[8px] font-black text-electric uppercase">Node: {session.visitor_id.slice(0, 8)}</span>
+                  <span className="text-[8px] font-bold text-slate-400 uppercase">{session.duration_seconds}s</span>
+                </div>
+                <div className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">
+                  {session.submitted ? (
+                    <span className="text-green-500">[CONVERTED]</span>
+                  ) : (session.form_progress || 0) > 0 ? (
+                    <span>Exited Step {session.form_progress}</span>
+                  ) : (
+                    <span>Bounced</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const WeeklySummary: React.FC<{ data: SiteAnalytics[]; leads: Lead[] }> = ({ data, leads }) => {
@@ -37,9 +154,9 @@ const WeeklySummary: React.FC<{ data: SiteAnalytics[]; leads: Lead[] }> = ({ dat
     // Logic-driven Revenue Projection
     const projectedRevenue = leads.reduce((acc, curr) => {
       const tier = curr.revenue_tier?.toUpperCase() || '';
-      if (tier.includes('GAMMA')) return acc + 4000; // Median of $3k-$5k+
-      if (tier.includes('BETA')) return acc + 2000;  // Median of $1k-$3k
-      if (tier.includes('ALPHA')) return acc + 650;  // Median of $300-$1k
+      if (tier.includes('GAMMA')) return acc + 4000;
+      if (tier.includes('BETA')) return acc + 2000;
+      if (tier.includes('ALPHA')) return acc + 650;
       return acc + 150;
     }, 0);
 
@@ -51,7 +168,7 @@ const WeeklySummary: React.FC<{ data: SiteAnalytics[]; leads: Lead[] }> = ({ dat
   }, [data, leads]);
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 md:p-8 mb-8 font-mono relative overflow-hidden shadow-lab">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-8 mb-8 font-mono relative overflow-hidden shadow-lab">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 relative z-10">
         <div>
           <div className="text-electric font-black text-[10px] tracking-[0.4em] mb-4 md:6 uppercase border-b border-slate-100 dark:border-white/5 pb-2">
@@ -212,75 +329,56 @@ const AdminDashboard: React.FC = () => {
       <main className="max-w-[1600px] mx-auto">
         <WeeklySummary data={analyticsData} leads={leads} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="md:col-span-2 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input 
-              type="text" 
-              placeholder="SEARCH_BY_EMAIL_OR_ID..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl pl-12 pr-4 py-4 text-midnight dark:text-white text-[10px] md:text-[11px] font-bold tracking-widest outline-none focus:border-sunset transition-all shadow-sm"
-            />
-          </div>
-          <select value={filterTier} onChange={(e) => setFilterTier(e.target.value)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl px-4 py-4 text-midnight dark:text-white text-[10px] font-black uppercase tracking-widest outline-none">
-            <option value="ALL">ALL_TIERS</option>
-            <option value="ALPHA">ALPHA</option>
-            <option value="BETA">BETA</option>
-            <option value="GAMMA">GAMMA</option>
-          </select>
-          <button onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')} className="flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl px-4 py-4 text-midnight dark:text-white text-[10px] font-black uppercase tracking-widest transition-all">
-            <ArrowUpDown size={14} /> <span className="whitespace-nowrap">SORT_ORDER ({sortOrder})</span>
-          </button>
-        </div>
+        <AnimatePresence mode="wait">
+          {activeTab === 'leads' ? (
+            <motion.div 
+              key="leads-tab"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              className="space-y-8"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="md:col-span-2 relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="text" 
+                    placeholder="SEARCH_BY_EMAIL_OR_ID..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl pl-12 pr-4 py-4 text-midnight dark:text-white text-[10px] md:text-[11px] font-bold tracking-widest outline-none focus:border-sunset transition-all shadow-sm"
+                  />
+                </div>
+                <select value={filterTier} onChange={(e) => setFilterTier(e.target.value)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl px-4 py-4 text-midnight dark:text-white text-[10px] font-black uppercase tracking-widest outline-none shadow-sm">
+                  <option value="ALL">ALL_TIERS</option>
+                  <option value="ALPHA">ALPHA</option>
+                  <option value="BETA">BETA</option>
+                  <option value="GAMMA">GAMMA</option>
+                </select>
+                <button onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')} className="flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl px-4 py-4 text-midnight dark:text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">
+                  <ArrowUpDown size={14} /> <span className="whitespace-nowrap">SORT_ORDER ({sortOrder})</span>
+                </button>
+              </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[2.5rem] overflow-hidden shadow-sm">
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-left border-collapse min-w-[1000px]">
-              <thead>
-                <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-white/5">
-                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">SESSION_ID</th>
-                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">TARGET_DOMAIN</th>
-                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">EMAIL_CONTACT</th>
-                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">REVENUE_TIER</th>
-                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">STATUS</th>
-                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                {filteredLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="px-6 md:px-8 py-6 text-[10px] font-black text-electric uppercase">{lead.session_id}</td>
-                    <td className="px-6 md:px-8 py-6 text-[10px] md:text-[11px] font-bold text-midnight dark:text-white uppercase truncate max-w-[150px] md:max-w-[200px]">{lead.target_url}</td>
-                    <td className="px-6 md:px-8 py-6 text-[10px] md:text-[11px] font-bold text-midnight dark:text-white">{lead.user_email}</td>
-                    <td className="px-6 md:px-8 py-6">
-                      <span className="text-[9px] font-black px-3 py-1.5 rounded bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white uppercase tracking-widest border border-slate-200 dark:border-white/10">
-                        {TIER_DISPLAY_MAP[lead.revenue_tier] || lead.revenue_tier || 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-6 md:px-8 py-6">
-                       <select value={lead.status} onChange={(e) => handleStatusChange(lead.id, e.target.value as Lead['status'])} className="text-[9px] font-black bg-transparent border-none outline-none text-sunset uppercase tracking-widest cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 p-1 rounded transition-all">
-                         <option value="pending">PENDING</option>
-                         <option value="contacted">CONTACTED</option>
-                         <option value="audit_delivered">AUDIT_DELIVERED</option>
-                         <option value="closed">CLOSED</option>
-                       </select>
-                    </td>
-                    <td className="px-6 md:px-8 py-6">
-                      <div className="flex items-center gap-3">
-                        <a href={`https://${lead.target_url}`} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-300 hover:text-electric transition-all"><ExternalLink size={14} /></a>
-                        <button onClick={() => handleDelete(lead.id)} className="p-2 text-slate-300 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-};
-
-export default AdminDashboard;
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden shadow-sm">
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full text-left border-collapse min-w-[1000px]">
+                    <thead>
+                      <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-white/5">
+                        <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">SESSION_ID</th>
+                        <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">TARGET_DOMAIN</th>
+                        <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">EMAIL_CONTACT</th>
+                        <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">REVENUE_TIER</th>
+                        <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">STATUS</th>
+                        <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">ACTIONS</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {filteredLeads.map((lead) => (
+                        <tr key={lead.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="px-6 md:px-8 py-6 text-[10px] font-black text-electric uppercase">{lead.session_id}</td>
+                          <td className="px-6 md:px-8 py-6 text-[10px] md:text-[11px] font-bold text-midnight dark:text-white uppercase truncate max-w-[150px] md:max-w-[200px]">{lead.target_url}</td>
+                          <td className="px-6 md:px-8 py-6 text-[10px] md:text-[11px] font-bold text-midnight dark:text-white">{lead.user_email}</td>
+                          <td className="px-6 md:px-8 py-6">
+                            <span className="text-[9px] font-black px-3 py-1.5 rounded bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white uppercase tracking-widest border border-slate-200 dark:border-white/10">
+                              {TIER_DISPLAY_MAP[

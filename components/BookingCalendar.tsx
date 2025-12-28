@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, Loader2, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, Loader2, Calendar, AlertCircle } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { analytics } from '../lib/analytics';
 import { saveBooking } from '../lib/mockApi';
@@ -13,6 +13,7 @@ const BookingCalendar: React.FC = () => {
   const [email, setEmail] = useState('');
   const [step, setStep] = useState<'datetime' | 'email' | 'success'>('datetime');
   const [isTransmitting, setIsTransmitting] = useState(false);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [sessionID] = useState(() => `BKG-${Math.floor(1000 + Math.random() * 9000)}-SYS`);
 
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -23,6 +24,7 @@ const BookingCalendar: React.FC = () => {
 
   const handleMonthShift = (direction: number) => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + direction, 1));
+    setDateError(null);
   };
 
   const currentMonth = currentDate.getMonth();
@@ -35,6 +37,21 @@ const BookingCalendar: React.FC = () => {
   for (let i = 1; i <= daysInMonth; i++) calendarGrid.push(i);
 
   const timeSlots = ["09:00 AM", "11:00 AM", "01:30 PM", "03:30 PM"];
+
+  const handleDateSelection = (day: number) => {
+    const targetDate = new Date(currentYear, currentMonth, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (targetDate < today) {
+      setDateError("This is a past date. Booking is not possible.");
+      setSelectedDate(null);
+      return;
+    }
+
+    setDateError(null);
+    setSelectedDate(targetDate);
+  };
 
   const handleProceedToEmail = () => {
     if (selectedDate && selectedTime) setStep('email');
@@ -65,10 +82,8 @@ const BookingCalendar: React.FC = () => {
     };
 
     try {
-      // 1. Save to Database (Hybrid Local/Supabase)
       await saveBooking(bookingData);
       
-      // 2. Transmit via EmailJS Protocol
       const serviceID = process.env.EMAILJS_SERVICE_ID || 'default_service';
       const templateID = process.env.EMAILJS_TEMPLATE_ID || 'template_booking';
       const publicKey = process.env.EMAILJS_PUBLIC_KEY || '';
@@ -87,8 +102,6 @@ const BookingCalendar: React.FC = () => {
           },
           publicKey
         );
-      } else {
-        console.warn("EmailJS Public Key missing. Transmission logged but not emailed.");
       }
 
       analytics.logHandshake('calendly');
@@ -96,7 +109,6 @@ const BookingCalendar: React.FC = () => {
       setStep('success');
     } catch (err) {
       console.warn("Communication Bridge Exception:", err);
-      // Fallback to success if data is saved locally/DB but email failed
       setIsTransmitting(false);
       setStep('success'); 
     }
@@ -123,21 +135,28 @@ const BookingCalendar: React.FC = () => {
               {days.map((day, i) => <div key={i}>{day}</div>)}
             </div>
 
-            <div className="grid grid-cols-7 gap-1 mb-4">
+            <div className="grid grid-cols-7 gap-1 mb-2">
               {calendarGrid.map((day, idx) => {
+                const targetDate = day ? new Date(currentYear, currentMonth, day) : null;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const isPast = targetDate && targetDate < today;
                 const isSelected = day && selectedDate?.getDate() === day && selectedDate?.getMonth() === currentMonth;
-                const isToday = day && new Date().getDate() === day && new Date().getMonth() === currentMonth;
+                const isToday = day && today.getDate() === day && today.getMonth() === currentMonth;
+
                 return (
                   <div key={idx} className="aspect-square">
                     {day ? (
                       <button 
-                        onClick={() => setSelectedDate(new Date(currentYear, currentMonth, day))} 
+                        onClick={() => handleDateSelection(day)} 
                         className={`w-full h-full rounded-md text-[10px] font-black transition-all ${
                           isSelected 
-                            ? 'bg-sunset text-white shadow-lg' 
-                            : isToday 
-                              ? 'border border-sunset/30 text-sunset'
-                              : 'text-midnight dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/10'
+                            ? 'bg-sunset text-white shadow-lg scale-110 z-10' 
+                            : isPast
+                              ? 'text-slate-200 dark:text-slate-800 cursor-not-allowed'
+                              : isToday 
+                                ? 'border-2 border-sunset text-sunset font-black'
+                                : 'text-midnight dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/10'
                         }`}
                       >
                         {day}
@@ -148,18 +167,31 @@ const BookingCalendar: React.FC = () => {
               })}
             </div>
 
+            <AnimatePresence>
+              {dateError && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex items-center gap-2 text-[10px] font-black text-red-500 uppercase tracking-widest mb-4 bg-red-50 dark:bg-red-500/10 p-2 rounded-lg border border-red-100 dark:border-red-500/20"
+                >
+                  <AlertCircle size={12} /> {dateError}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {selectedDate && (
-              <div className="mt-2 space-y-2">
+              <div className="mt-2 space-y-3">
                 <span className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-600 tracking-widest">Available Slots</span>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   {timeSlots.map(time => (
                     <button 
                       key={time} 
                       onClick={() => setSelectedTime(time)} 
-                      className={`px-2 py-2 rounded-lg text-[9px] font-black transition-all ${
+                      className={`px-3 py-3 rounded-lg text-[11px] font-[900] transition-all border ${
                         selectedTime === time 
-                          ? 'bg-midnight dark:bg-white text-white dark:text-midnight shadow-md' 
-                          : 'bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-500 hover:text-midnight dark:hover:text-white'
+                          ? 'bg-midnight dark:bg-white text-white dark:text-midnight border-midnight dark:border-white shadow-lg' 
+                          : 'bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-500 border-transparent hover:text-midnight dark:hover:text-white'
                       }`}
                     >
                       {time}
@@ -172,9 +204,9 @@ const BookingCalendar: React.FC = () => {
             <button 
               disabled={!selectedDate || !selectedTime} 
               onClick={handleProceedToEmail} 
-              className="mt-auto w-full py-4 bg-midnight dark:bg-white text-white dark:text-midnight rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-20 flex items-center justify-center gap-2 hover:bg-sunset dark:hover:bg-sunset dark:hover:text-white transition-all shadow-xl"
+              className="mt-6 w-full py-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-xl font-black text-xs md:text-sm uppercase tracking-[0.2em] disabled:opacity-20 flex items-center justify-center gap-3 hover:bg-sunset dark:hover:bg-sunset dark:hover:text-white transition-all shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]"
             >
-              CONTINUE <ArrowRight size={14} />
+              CONTINUE <ArrowRight size={18} />
             </button>
           </motion.div>
         ) : step === 'email' ? (
@@ -193,12 +225,12 @@ const BookingCalendar: React.FC = () => {
             <button 
               disabled={!email.includes('@') || isTransmitting}
               onClick={handleFinalize} 
-              className="w-full py-5 bg-sunset text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl hover:brightness-110 transition-all disabled:opacity-30"
+              className="w-full py-6 bg-sunset text-white rounded-xl font-black text-xs md:text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl hover:brightness-110 transition-all disabled:opacity-30"
             >
               {isTransmitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> 
-                  <span>Encrypting & Sending...</span>
+                  <Loader2 size={18} className="animate-spin" /> 
+                  <span>Encrypting...</span>
                 </>
               ) : 'CONFIRM PROTOCOL'}
             </button>
