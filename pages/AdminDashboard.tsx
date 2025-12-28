@@ -51,10 +51,10 @@ const WeeklySummary: React.FC<{ data: SiteAnalytics[]; leads: Lead[] }> = ({ dat
   }, [data, leads]);
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-8 mb-8 font-mono relative overflow-hidden shadow-lab">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 relative z-10">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 md:p-8 mb-8 font-mono relative overflow-hidden shadow-lab">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 relative z-10">
         <div>
-          <div className="text-electric font-black text-[10px] tracking-[0.4em] mb-6 uppercase border-b border-slate-100 dark:border-white/5 pb-2">
+          <div className="text-electric font-black text-[10px] tracking-[0.4em] mb-4 md:6 uppercase border-b border-slate-100 dark:border-white/5 pb-2">
             OPS STATUS: LIVE METRICS
           </div>
           <div className="space-y-4 text-xs text-midnight dark:text-white">
@@ -63,10 +63,10 @@ const WeeklySummary: React.FC<{ data: SiteAnalytics[]; leads: Lead[] }> = ({ dat
           </div>
         </div>
         <div>
-          <div className="text-sunset font-black text-[10px] tracking-[0.4em] mb-6 uppercase border-b border-slate-100 dark:border-white/5 pb-2">
+          <div className="text-sunset font-black text-[10px] tracking-[0.4em] mb-4 md:6 uppercase border-b border-slate-100 dark:border-white/5 pb-2">
             REVENUE PIPELINE
           </div>
-          <div className="text-2xl font-black text-midnight dark:text-white tracking-tighter">
+          <div className="text-xl md:text-2xl font-black text-midnight dark:text-white tracking-tighter">
             Forecasted Yield: <span className="text-sunset">${stats.projected_revenue.toLocaleString()}</span>
           </div>
         </div>
@@ -169,7 +169,7 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-600 font-mono p-4 md:p-10 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-600 font-mono p-4 md:p-8 lg:p-10 transition-colors">
       <AnimatePresence>
         {toast && (
           <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`fixed bottom-10 right-10 z-[200] px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-2xl border ${toast.type === 'success' ? 'bg-midnight dark:bg-white text-white dark:text-midnight border-white/10' : 'bg-red-500 text-white border-red-400'}`}>
@@ -178,11 +178,11 @@ const AdminDashboard: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <header className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12 border-b border-slate-200 dark:border-white/5 pb-10">
-        <div>
+      <header className="max-w-[1600px] mx-auto flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12 border-b border-slate-200 dark:border-white/5 pb-10">
+        <div className="w-full lg:w-auto">
           <div className="flex items-center gap-3 mb-2">
             <Database size={22} className="text-electric" />
-            <h1 className="text-midnight dark:text-white text-2xl font-black tracking-tighter uppercase">AVARTAH // OPS_LEDGER</h1>
+            <h1 className="text-midnight dark:text-white text-xl md:text-2xl font-black tracking-tighter uppercase">AVARTAH // OPS_LEDGER</h1>
           </div>
           <div className="flex items-center gap-4">
              <div className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-green-500 animate-pulse' : 'bg-electric'}`} />
@@ -192,25 +192,27 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3 md:gap-4 w-full lg:w-auto">
           <button 
             onClick={() => navigate('/')} 
-            className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-white/5 hover:text-midnight dark:hover:text-white transition-all shadow-sm"
+            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-3 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-white/5 hover:text-midnight dark:hover:text-white transition-all shadow-sm"
           >
-            <Globe size={14} /> VIEW_LIVE_NODE
+            <Globe size={14} className="shrink-0" /> <span className="whitespace-nowrap">VIEW_LIVE_NODE</span>
           </button>
-          <div className="flex bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-            <button onClick={() => setActiveTab('leads')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black transition-all ${activeTab === 'leads' ? 'bg-midnight dark:bg-white text-white dark:text-midnight' : 'text-slate-400'}`}>DATA_LEDGER</button>
-            <button onClick={() => setActiveTab('analytics')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black transition-all ${activeTab === 'analytics' ? 'bg-midnight dark:bg-white text-white dark:text-midnight' : 'text-slate-400'}`}>NETWORK_METRICS</button>
+          
+          <div className="flex-1 lg:flex-none flex bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+            <button onClick={() => setActiveTab('leads')} className={`flex-1 px-3 md:px-6 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black transition-all whitespace-nowrap ${activeTab === 'leads' ? 'bg-midnight dark:bg-white text-white dark:text-midnight' : 'text-slate-400'}`}>DATA_LEDGER</button>
+            <button onClick={() => setActiveTab('analytics')} className={`flex-1 px-3 md:px-6 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black transition-all whitespace-nowrap ${activeTab === 'analytics' ? 'bg-midnight dark:bg-white text-white dark:text-midnight' : 'text-slate-400'}`}>NETWORK_METRICS</button>
           </div>
-          <button onClick={() => { logout(); navigate('/admin/login'); }} className="px-6 py-3 bg-red-50 dark:bg-red-500/10 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-100 dark:border-red-500/20">LOGOUT</button>
+
+          <button onClick={() => { logout(); navigate('/admin/login'); }} className="flex-1 lg:flex-none px-4 md:px-6 py-3 bg-red-50 dark:bg-red-500/10 text-red-600 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest border border-red-100 dark:border-red-500/20 whitespace-nowrap text-center">LOGOUT</button>
         </div>
       </header>
 
       <main className="max-w-[1600px] mx-auto">
         <WeeklySummary data={analyticsData} leads={leads} />
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="md:col-span-2 relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
@@ -218,7 +220,7 @@ const AdminDashboard: React.FC = () => {
               placeholder="SEARCH_BY_EMAIL_OR_ID..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl pl-12 pr-4 py-4 text-midnight dark:text-white text-[11px] font-bold tracking-widest outline-none focus:border-sunset transition-all shadow-sm"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl pl-12 pr-4 py-4 text-midnight dark:text-white text-[10px] md:text-[11px] font-bold tracking-widest outline-none focus:border-sunset transition-all shadow-sm"
             />
           </div>
           <select value={filterTier} onChange={(e) => setFilterTier(e.target.value)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl px-4 py-4 text-midnight dark:text-white text-[10px] font-black uppercase tracking-widest outline-none">
@@ -228,35 +230,35 @@ const AdminDashboard: React.FC = () => {
             <option value="GAMMA">GAMMA</option>
           </select>
           <button onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')} className="flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl px-4 py-4 text-midnight dark:text-white text-[10px] font-black uppercase tracking-widest transition-all">
-            <ArrowUpDown size={14} /> SORT_ORDER ({sortOrder})
+            <ArrowUpDown size={14} /> <span className="whitespace-nowrap">SORT_ORDER ({sortOrder})</span>
           </button>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[2.5rem] overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full">
             <table className="w-full text-left border-collapse min-w-[1000px]">
               <thead>
                 <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-white/5">
-                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">SESSION_ID</th>
-                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">TARGET_DOMAIN</th>
-                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">EMAIL_CONTACT</th>
-                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">REVENUE_TIER</th>
-                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">STATUS</th>
-                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">ACTIONS</th>
+                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">SESSION_ID</th>
+                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">TARGET_DOMAIN</th>
+                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">EMAIL_CONTACT</th>
+                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">REVENUE_TIER</th>
+                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">STATUS</th>
+                  <th className="px-6 md:px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {filteredLeads.map((lead) => (
                   <tr key={lead.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="px-8 py-6 text-[10px] font-black text-electric uppercase">{lead.session_id}</td>
-                    <td className="px-8 py-6 text-[11px] font-bold text-midnight dark:text-white uppercase truncate max-w-[200px]">{lead.target_url}</td>
-                    <td className="px-8 py-6 text-[11px] font-bold text-midnight dark:text-white">{lead.user_email}</td>
-                    <td className="px-8 py-6">
+                    <td className="px-6 md:px-8 py-6 text-[10px] font-black text-electric uppercase">{lead.session_id}</td>
+                    <td className="px-6 md:px-8 py-6 text-[10px] md:text-[11px] font-bold text-midnight dark:text-white uppercase truncate max-w-[150px] md:max-w-[200px]">{lead.target_url}</td>
+                    <td className="px-6 md:px-8 py-6 text-[10px] md:text-[11px] font-bold text-midnight dark:text-white">{lead.user_email}</td>
+                    <td className="px-6 md:px-8 py-6">
                       <span className="text-[9px] font-black px-3 py-1.5 rounded bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white uppercase tracking-widest border border-slate-200 dark:border-white/10">
                         {TIER_DISPLAY_MAP[lead.revenue_tier] || lead.revenue_tier || 'N/A'}
                       </span>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-6 md:px-8 py-6">
                        <select value={lead.status} onChange={(e) => handleStatusChange(lead.id, e.target.value as Lead['status'])} className="text-[9px] font-black bg-transparent border-none outline-none text-sunset uppercase tracking-widest cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 p-1 rounded transition-all">
                          <option value="pending">PENDING</option>
                          <option value="contacted">CONTACTED</option>
@@ -264,7 +266,7 @@ const AdminDashboard: React.FC = () => {
                          <option value="closed">CLOSED</option>
                        </select>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-6 md:px-8 py-6">
                       <div className="flex items-center gap-3">
                         <a href={`https://${lead.target_url}`} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-300 hover:text-electric transition-all"><ExternalLink size={14} /></a>
                         <button onClick={() => handleDelete(lead.id)} className="p-2 text-slate-300 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
