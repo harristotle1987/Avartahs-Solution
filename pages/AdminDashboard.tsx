@@ -53,7 +53,6 @@ const AnalyticsView: React.FC<{ data: SiteAnalytics[] }> = ({ data }) => {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         {[
           { label: 'Network Nodes', value: stats.total, icon: <Globe size={18} />, color: 'text-electric' },
@@ -70,7 +69,6 @@ const AnalyticsView: React.FC<{ data: SiteAnalytics[] }> = ({ data }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-        {/* Funnel Chart */}
         <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between mb-10">
             <div>
@@ -103,7 +101,6 @@ const AnalyticsView: React.FC<{ data: SiteAnalytics[] }> = ({ data }) => {
           </div>
         </div>
 
-        {/* Traffic Log */}
         <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-8 flex flex-col shadow-sm max-h-[400px] md:max-h-full">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-midnight dark:text-white text-[10px] md:text-sm font-black tracking-tighter uppercase">Recent Activity</h3>
@@ -151,7 +148,6 @@ const WeeklySummary: React.FC<{ data: SiteAnalytics[]; leads: Lead[] }> = ({ dat
     const totalDuration = last7Days.reduce((acc, curr) => acc + (curr.duration_seconds || 0), 0);
     const avgDuration = totalVisitors > 0 ? Math.round(totalDuration / totalVisitors) : 0;
     
-    // Logic-driven Revenue Projection
     const projectedRevenue = leads.reduce((acc, curr) => {
       const tier = curr.revenue_tier?.toUpperCase() || '';
       if (tier.includes('GAMMA')) return acc + 4000;
@@ -381,4 +377,37 @@ const AdminDashboard: React.FC = () => {
                           <td className="px-6 md:px-8 py-6 text-[10px] md:text-[11px] font-bold text-midnight dark:text-white">{lead.user_email}</td>
                           <td className="px-6 md:px-8 py-6">
                             <span className="text-[9px] font-black px-3 py-1.5 rounded bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white uppercase tracking-widest border border-slate-200 dark:border-white/10">
-                              {TIER_DISPLAY_MAP[
+                              {TIER_DISPLAY_MAP[lead.revenue_tier] || lead.revenue_tier || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 md:px-8 py-6">
+                             <select value={lead.status} onChange={(e) => handleStatusChange(lead.id, e.target.value as Lead['status'])} className="text-[9px] font-black bg-transparent border-none outline-none text-sunset uppercase tracking-widest cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 p-1 rounded transition-all">
+                               <option value="pending">PENDING</option>
+                               <option value="contacted">CONTACTED</option>
+                               <option value="audit_delivered">AUDIT_DELIVERED</option>
+                               <option value="closed">CLOSED</option>
+                             </select>
+                          </td>
+                          <td className="px-6 md:px-8 py-6">
+                            <div className="flex items-center gap-3">
+                              <a href={`https://${lead.target_url}`} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-300 hover:text-electric transition-all"><ExternalLink size={14} /></a>
+                              <button onClick={() => handleDelete(lead.id)} className="p-2 text-slate-300 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            <AnalyticsView data={analyticsData} />
+          )}
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+};
+
+export default AdminDashboard;
