@@ -9,7 +9,7 @@ const projects = [
     category: "Bio-Metric Architecture", 
     description: "Bio-Sovereignty Engine designed to stop revenue leaks via multi-tier governance. Features an AI-driven Command Console with real-time biometric telemetry and Amethyst-to-Emerald logic states.", 
     realScreenshot: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop", 
-    link: "https://avartahs-solution-fxzc.vercel.app/#/", 
+    link: "https://fitlife-pro-2-seven.vercel.app/", 
     icon: <Activity size={14} />, 
     metrics: "Real-time Sync Node" 
   },
