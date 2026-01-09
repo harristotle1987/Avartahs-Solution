@@ -1,8 +1,18 @@
+
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, ExternalLink, Cpu, Layout, MessageSquare, Camera, Download, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowUpRight, ExternalLink, Cpu, Layout, MessageSquare, Camera, Download, Loader2, AlertCircle, Activity } from 'lucide-react';
 
 const projects = [
+  { 
+    title: "FitLife Pro Ecosystem", 
+    category: "Bio-Metric Architecture", 
+    description: "Bio-Sovereignty Engine designed to stop revenue leaks via multi-tier governance. Features an AI-driven Command Console with real-time biometric telemetry and Amethyst-to-Emerald logic states.", 
+    realScreenshot: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop", 
+    link: "https://avartahs-solution-fxzc.vercel.app/#/", 
+    icon: <Activity size={14} />, 
+    metrics: "Real-time Sync Node" 
+  },
   { 
     title: "Restaurantly AI Engine", 
     category: "Full-Stack + AI", 

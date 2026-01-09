@@ -15,113 +15,81 @@ const Hero: React.FC<HeroProps> = ({ onAuditComplete }) => {
   return (
     <div 
       onMouseEnter={() => analytics.logCTAClick('hero')}
-      className="relative min-h-0 lg:min-h-screen flex items-start lg:items-center justify-center px-4 md:px-8 pt-24 md:pt-32 lg:pt-40 pb-16 md:pb-24 overflow-hidden bg-white dark:bg-[#020617] transition-colors duration-500"
+      className="relative min-h-[85dvh] lg:min-h-[100dvh] w-full flex flex-col items-center px-4 md:px-8 lg:px-12 overflow-hidden bg-white dark:bg-[#020617] transition-colors duration-500 pb-12 lg:pb-0"
     >
-      <div className="absolute inset-0 cyber-grid pointer-events-none opacity-50" />
+      {/* Visual Background Pattern */}
+      <div className="absolute inset-0 cyber-grid pointer-events-none opacity-20" />
       
-      <div className="max-w-[1500px] mx-auto w-full z-10 relative">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-20 items-start">
+      {/* Main Container: Shifted pt-32 for navbar clearance, flex-1 for center logic */}
+      <div className="max-w-[1500px] mx-auto w-full z-10 relative flex-1 flex flex-col justify-start lg:justify-center pt-28 md:pt-36 lg:pt-0">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 lg:gap-16 items-start lg:items-center">
           
-          {/* Main Headline Pillar */}
-          <div className="lg:col-span-8 flex flex-col justify-center">
+          {/* Main Content Pillar - Extreme Compression */}
+          <div className="lg:col-span-7 flex flex-col justify-center text-left">
             <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3 mb-2 sm:mb-4"
+              className="mb-1.5"
             >
-              <div className="w-6 md:w-8 h-px bg-sunset" />
-              <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-500">
-                DATA DRIVEN AUDIT SYSTEM // V4.2
+              <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.4em] text-electric">
+                FOR BUSINESS OWNERS TIRED OF WEBSITES THAT DON'T SELL
               </span>
             </motion.div>
 
             <motion.h1
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-[4.2rem] xl:text-[5rem] font-[900] leading-[1.1] tracking-[-0.03em] text-midnight dark:text-white mb-4 sm:mb-8 lg:mb-10"
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="text-[1.85rem] sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-[900] leading-[1.05] tracking-tighter text-midnight dark:text-white mb-2 md:mb-4"
             >
-              From <span className="font-serif-italic text-sunset">Sketch</span> to Scale <br />
-              I Build the Web <br />
-              You <span className="font-serif-italic text-electric">Imagine</span>
+              Generate <span className="text-sunset">2.5X More Leads</span> and <span className="text-sunset font-serif-italic">Scale With Confidence</span> in 10 Days Using Our Data-Driven Audit
             </motion.h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 lg:gap-12 items-start">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 1, delay: 0.4 }}
-                className="order-2 md:order-1"
-              >
-                <p className="text-sm md:text-base lg:text-lg text-slate-500 dark:text-slate-400 leading-relaxed font-medium mb-4 sm:mb-10 max-w-sm">
-                  Stop losing customers to bad design. Get a logic-based audit and transform your digital presence today.
-                </p>
-                
-                <div className="flex items-center gap-4">
-                  <div className="flex -space-x-3">
-                    {[1,2,3,4].map(i => (
-                      <div key={i} className="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 md:border-4 border-white dark:border-midnight bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-sm">
-                        <img src={`https://i.pravatar.cc/100?img=${i+25}`} alt="user" className="w-full h-full object-cover grayscale" />
-                      </div>
-                    ))}
-                  </div>
-                  <div>
-                    <div className="text-[8px] md:text-[10px] font-black text-midnight dark:text-white leading-none">500+ AUDITS</div>
-                    <div className="text-[7px] md:text-[8px] text-slate-400 dark:text-slate-600 font-black uppercase tracking-widest mt-1">SUCCESS RATE 100%</div>
-                  </div>
-                </div>
-              </motion.div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="text-xs sm:text-sm md:text-lg lg:text-xl text-slate-500 dark:text-slate-400 leading-tight font-medium mb-5 md:mb-8 max-w-2xl"
+            >
+              Stop losing customers to bad design. Get a logic-based audit & 2X your sales in 10 days.
+            </motion.p>
 
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                id={SectionId.Audit} 
-                className="scroll-mt-32 w-full order-1 md:order-2"
-              >
-                <div className="relative">
-                  <div className="absolute -top-6 -left-6 md:-top-8 md:-left-8 opacity-10 pointer-events-none dark:opacity-5">
-                    <ArrowDownRight size={60} className="text-midnight dark:text-white md:w-[80px] md:h-[80px]" />
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="w-6 h-6 md:w-9 md:h-9 rounded-full border-2 border-white dark:border-midnight bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-sm">
+                    <img src={`https://i.pravatar.cc/100?img=${i+25}`} alt="user" className="w-full h-full object-cover grayscale" />
                   </div>
-                  <AuditForm onAuditComplete={onAuditComplete} />
-                </div>
-              </motion.div>
+                ))}
+              </div>
+              <div className="flex flex-col">
+                <div className="text-[7px] md:text-[10px] font-black text-midnight dark:text-white leading-none">500+ AUDITS COMPLETED</div>
+                <div className="text-[6px] md:text-[9px] text-slate-400 dark:text-slate-600 font-black uppercase tracking-widest mt-0.5">SUCCESS RATE: 100% PRECISION</div>
+              </div>
             </div>
           </div>
           
-          {/* Status Sidebar (Hidden on mobile/tablet until lg) */}
-          <div className="hidden lg:col-span-4 lg:flex flex-col justify-start border-l border-slate-100 dark:border-white/5 pl-12 h-full py-10">
-            <div className="space-y-12">
-               <motion.div 
-                 initial={{ opacity: 0, x: 20 }}
-                 animate={{ opacity: 1, x: 0 }}
-                 transition={{ delay: 0.6 }}
-               >
-                 <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 mb-3 block">Node Protocol</span>
-                 <div className="text-xl font-black text-midnight dark:text-white">$1.2M+ Recovered</div>
-                 <div className="text-[8px] font-bold text-electric uppercase tracking-widest mt-2">STATUS: AGGREGATING...</div>
-               </motion.div>
-
-               <motion.div 
-                 initial={{ opacity: 0, x: 20 }}
-                 animate={{ opacity: 1, x: 0 }}
-                 transition={{ delay: 0.7 }}
-               >
-                 <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 mb-3 block">Efficiency Rating</span>
-                 <div className="text-xl font-black text-midnight dark:text-white">98.4% Precision</div>
-                 <div className="text-[8px] font-bold text-sunset uppercase tracking-widest mt-2">SYSTEM: OPTIMIZED</div>
-               </motion.div>
-
-               <div className="pt-10 border-t border-slate-100 dark:border-white/5">
-                 <div className="font-mono text-[9px] leading-loose text-slate-300 dark:text-slate-700">
-                    {`>> SYSTEM_INITIALIZED`} <br/>
-                    {`>> ANALYZING_PIPELINE`} <br/>
-                    {`>> OPTIMIZING_LOADS`} <br/>
-                    {`>> STATUS: READY`}
-                 </div>
-               </div>
-            </div>
+          {/* Audit Form Pillar - Perfectly Proximity-Aligned */}
+          <div className="lg:col-span-5 flex justify-center lg:justify-end mt-2 lg:mt-0">
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              id={SectionId.Audit} 
+              className="w-full max-w-[22rem] md:max-w-md relative"
+            >
+              <AuditForm onAuditComplete={onAuditComplete} />
+            </motion.div>
           </div>
+
+        </div>
+      </div>
+
+      {/* Extreme Edge Visual Elements */}
+      <div className="absolute bottom-4 left-6 hidden xl:block">
+        <div className="font-mono text-[8px] leading-tight text-slate-300 dark:text-slate-700 opacity-30">
+          {`>> STATUS: DEPLOYED`} <br/>
+          {`>> VIEWPORT: OPTIMIZED`}
         </div>
       </div>
     </div>

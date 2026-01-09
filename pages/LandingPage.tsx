@@ -25,7 +25,7 @@ const StatsBar: React.FC = () => {
   ];
 
   return (
-    <div className="py-8 md:py-10 lg:py-12 border-y border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01]">
+    <div className="py-6 md:py-8 lg:py-10 border-y border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01]">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
         {stats.map((s, i) => (
           <div key={i} className="flex flex-col items-center lg:items-start text-center lg:text-left">
@@ -65,9 +65,9 @@ const LandingPage: React.FC = () => {
 
         <StatsBar />
 
-        <section id={SectionId.Services} className="py-16 md:py-20 lg:py-24 px-6 bg-white dark:bg-[#020617]">
+        <section id={SectionId.Services} className="py-12 md:py-16 lg:py-20 px-6 bg-white dark:bg-[#020617]">
           <div className="max-w-7xl mx-auto">
-            <div className="mb-12 md:mb-16 lg:mb-20 text-center">
+            <div className="mb-10 md:mb-14 lg:mb-16 text-center">
               <span className="text-[10px] font-black text-sunset uppercase tracking-[0.4em] mb-4 block">Skills & Tech Stack</span>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight uppercase text-midnight dark:text-white">
                 My Tech <span className="font-serif-italic text-sunset">Toolbox</span>
