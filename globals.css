@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:italic&family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap');
+
+:root {
+  --background: #FFFFFF;
+  --foreground: #0F172A;
+  --muted: #64748B;
+  --electric: #3B82F6;
+  --sunset: #F97316;
+}
+
+.dark {
+  --background: #020617;
+  --foreground: #F8FAFC;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.5s ease;
+}
+
+.font-serif-italic {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+}
+
+/* Light Technical Grid */
+.cyber-grid {
+  background-image: 
+    linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+.dark .cyber-grid {
+  background-image: 
+    linear-gradient(rgba(248, 250, 252, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(248, 250, 252, 0.02) 1px, transparent 1px);
+}
+
+.shadow-premium {
+  box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.04);
+}
+
+.dark .shadow-premium {
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.4);
+}
+
+.shadow-highlight {
+  box-shadow: 0 20px 60px -15px rgba(249, 115, 22, 0.12);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E2E8F0;
+  border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
