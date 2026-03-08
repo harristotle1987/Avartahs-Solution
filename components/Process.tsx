@@ -112,14 +112,14 @@ const Process: React.FC = () => {
                     transition={{ duration: 0.8, ease: "easeOut" }}
                     className="flex-1 w-full"
                   >
-                    <div className="bg-white dark:bg-[#020617] border border-slate-200 dark:border-white/10 p-8 md:p-14 rounded-[2.5rem] md:rounded-[3.5rem] shadow-lab hover:border-sunset/40 transition-all duration-500 group">
-                      <div className="flex items-center gap-4 md:gap-6 mb-8 md:mb-10">
+                    <div className="bg-white dark:bg-[#020617] border border-slate-200 dark:border-white/10 p-6 md:p-14 rounded-[2.5rem] md:rounded-[3.5rem] shadow-lab hover:border-sunset/40 transition-all duration-500 group">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 md:gap-6 mb-6 md:mb-10">
                         <div className="p-4 md:p-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-2xl shadow-xl group-hover:scale-110 transition-transform shrink-0">
                           {item.icon}
                         </div>
                         <div className="flex flex-col min-w-0">
                           <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.5em] text-sunset mb-2">Phase {item.step}</span>
-                          <h3 className="text-lg sm:text-2xl md:text-4xl font-black uppercase tracking-tighter text-midnight dark:text-white leading-[1.1] break-words">
+                          <h3 className="text-lg sm:text-2xl md:text-4xl font-black uppercase tracking-tighter text-midnight dark:text-white leading-[1.1]">
                             {item.title}
                           </h3>
                         </div>
