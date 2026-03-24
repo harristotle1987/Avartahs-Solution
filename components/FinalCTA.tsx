@@ -38,12 +38,12 @@ const FinalCTA: React.FC<FinalCTAProps> = ({ onAuditComplete }) => {
              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Node Dispatch Active</span>
           </div>
           
-          <h2 className="text-5xl md:text-8xl lg:text-[8rem] font-[900] tracking-tighter uppercase text-white mb-8 leading-[0.8]">
+          <h2 className="text-4xl sm:text-5xl md:text-8xl lg:text-[8rem] font-[900] tracking-tighter uppercase text-white mb-8 leading-[0.8]">
             Final <br/>
             <span className="text-sunset italic">Deployment</span>
           </h2>
           
-          <p className="text-slate-400 text-lg md:text-2xl font-medium mb-12 max-w-2xl mx-auto leading-tight tracking-tight">
+          <p className="text-slate-400 text-base sm:text-lg md:text-2xl font-medium mb-12 max-w-2xl mx-auto leading-tight tracking-tight">
             Deploy your revenue-engineered architecture in exactly 10 business days. Stop the conversion leak today.
           </p>
         </motion.div>

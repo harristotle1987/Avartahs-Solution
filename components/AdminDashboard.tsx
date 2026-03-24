@@ -325,7 +325,7 @@ const AdminDashboard: React.FC = () => {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <Terminal size={20} className="text-electric" />
-            <h1 className="text-midnight text-xl font-black tracking-tighter uppercase">AVARTAH // OPS_LEDGER_v4.2</h1>
+            <h1 className="text-midnight text-xl font-black tracking-tighter uppercase">AVARTAH // Operations Ledger v4.2</h1>
           </div>
           <p className="text-[10px] font-bold text-slate-400 tracking-[0.4em] uppercase">INTERNAL PROTOCOLS // ANALYTICS & REVENUE DATA</p>
         </div>
@@ -336,17 +336,17 @@ const AdminDashboard: React.FC = () => {
               onClick={() => setActiveTab('leads')}
               className={`px-6 py-2 rounded-lg text-[10px] font-black transition-all flex items-center gap-2 ${activeTab === 'leads' ? 'bg-midnight text-white' : 'text-slate-400 hover:text-midnight'}`}
             >
-              <Users size={14} /> DATA_LEDGER
+              <Users size={14} /> Data Ledger
             </button>
             <button 
               onClick={() => setActiveTab('analytics')}
               className={`px-6 py-2 rounded-lg text-[10px] font-black transition-all flex items-center gap-2 ${activeTab === 'analytics' ? 'bg-midnight text-white' : 'text-slate-400 hover:text-midnight'}`}
             >
-              <Activity size={14} /> SYSTEM_METRICS
+              <Activity size={14} /> System Metrics
             </button>
           </div>
           <button onClick={() => { logout(); navigate('/admin/login'); }} className="flex items-center gap-2 px-5 py-3 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-100 hover:bg-red-100 transition-all">
-            <LogOut size={14} /> TERMINATE_SESSION
+            <LogOut size={14} /> Terminate Session
           </button>
         </div>
       </header>
@@ -367,7 +367,7 @@ const AdminDashboard: React.FC = () => {
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                   <input 
                     type="text" 
-                    placeholder="SEARCH_BY_NODE_OR_EMAIL..." 
+                    placeholder="Search by node or email..." 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-xl pl-12 pr-4 py-4 text-midnight text-[11px] font-bold tracking-widest outline-none focus:border-electric/50 transition-all shadow-sm"
@@ -376,16 +376,16 @@ const AdminDashboard: React.FC = () => {
                 
                 <div className="flex gap-2">
                   <select value={filterTier} onChange={(e) => setFilterTier(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-4 text-midnight text-[10px] font-black uppercase tracking-widest outline-none shadow-sm">
-                    <option value="ALL">ALL_TIERS</option>
+                    <option value="ALL">All Tiers</option>
                     <option value="ULTRA">ULTRA</option>
                     <option value="PRO">PRO</option>
                     <option value="LITE">LITE</option>
                   </select>
                   <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-4 text-midnight text-[10px] font-black uppercase tracking-widest outline-none shadow-sm">
-                    <option value="ALL">ALL_STATUS</option>
+                    <option value="ALL">All Status</option>
                     <option value="pending">PENDING</option>
                     <option value="contacted">CONTACTED</option>
-                    <option value="audit_delivered">DELIVERED</option>
+                    <option value="delivered">Delivered</option>
                     <option value="closed">CLOSED</option>
                   </select>
                 </div>
@@ -400,10 +400,10 @@ const AdminDashboard: React.FC = () => {
                   <table className="w-full text-left border-collapse min-w-[1200px]">
                     <thead>
                       <tr className="bg-slate-50/50 border-b border-slate-100">
-                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">ENTRY_NODE</th>
-                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">EMAIL_CONTACT</th>
+                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Entry Node</th>
+                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Email Contact</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">DOMAIN</th>
-                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">REVENUE_TIER</th>
+                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Revenue Tier</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">STATUS</th>
                         <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">ACTIONS</th>
                       </tr>
@@ -448,7 +448,7 @@ const AdminDashboard: React.FC = () => {
                               >
                                 <option value="pending">PENDING</option>
                                 <option value="contacted">CONTACTED</option>
-                                <option value="audit_delivered">AUDIT_DELIVERED</option>
+                                <option value="delivered">Audit Delivered</option>
                                 <option value="closed">CLOSED</option>
                               </select>
                             </td>
@@ -507,7 +507,7 @@ const AdminDashboard: React.FC = () => {
                                             rel="noopener noreferrer"
                                             className="px-4 py-2 bg-green-500 text-white text-[9px] font-black rounded-lg hover:bg-green-600 transition-colors"
                                           >
-                                            WHATSAPP_COMMS
+                                            WhatsApp Comms
                                           </a>
                                         </div>
                                       </div>
@@ -538,7 +538,7 @@ const AdminDashboard: React.FC = () => {
       </main>
 
       <footer className="max-w-[1600px] mx-auto mt-20 pt-8 border-t border-slate-200 flex justify-between items-center text-[9px] font-black text-slate-300 uppercase tracking-widest">
-        <span>© AVARTAH_OPS_INFRASTRUCTURE</span>
+        <span>© AVARTAH Operations Infrastructure</span>
         <span>Secure Instance ID: {instanceID}</span>
       </footer>
     </div>

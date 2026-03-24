@@ -8,7 +8,7 @@ const techStack = [
 
 const TechMarquee: React.FC = () => {
   return (
-    <div className="py-12 border-y border-slate-100 dark:border-white/5 overflow-hidden bg-slate-50/30 dark:bg-white/[0.01]">
+    <div className="py-12 border-y border-slate-50 overflow-hidden bg-slate-50/30">
       <div className="flex whitespace-nowrap">
         <motion.div 
           animate={{ x: [0, -1000] }}
@@ -16,7 +16,7 @@ const TechMarquee: React.FC = () => {
           className="flex gap-16 md:gap-32 items-center pr-16 md:pr-32"
         >
           {Array(4).fill(techStack).flat().map((tech, i) => (
-            <span key={i} className="text-2xl md:text-4xl font-black text-slate-200 dark:text-slate-800 uppercase tracking-tighter transition-colors hover:text-sunset cursor-default">
+            <span key={i} className="text-2xl md:text-4xl font-black text-slate-200 uppercase tracking-tighter transition-colors hover:text-sunset cursor-default">
               {tech}
             </span>
           ))}

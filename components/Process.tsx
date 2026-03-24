@@ -15,7 +15,7 @@ const steps = [
       'Revenue-per-Visitor (RPV) Analysis',
       'Competitive Logic Benchmarking'
     ],
-    codeSnippet: 'const audit = analyze(target_url);\nif (audit.score < 80) {\n  identifyLeaks(audit.path);\n}'
+    codeSnippet: 'const audit = analyze(targetUrl);\nif (audit.score < 80) {\n  identifyLeaks(audit.path);\n}'
   },
   { 
     id: 'mapping',
@@ -54,7 +54,7 @@ const steps = [
       'A/B Logic Experimentation',
       '24/7 Conversion Guardrails'
     ],
-    codeSnippet: 'stream.on("event", (e) => {\n  optimize(e.params);\n  log("ROI_TICK");\n});'
+    codeSnippet: 'stream.on("event", (e) => {\n  optimize(e.params);\n  log("ROI Tick");\n});'
   }
 ];
 
@@ -73,7 +73,7 @@ const Process: React.FC = () => {
   const orbPos = useTransform(smoothProgress, [0, 1], ["0%", "100%"]);
 
   return (
-    <div ref={containerRef} className="relative py-12 md:py-32 px-6 overflow-hidden bg-transparent">
+    <div ref={containerRef} className="relative py-16 md:py-32 px-6 overflow-hidden bg-transparent">
       <div className="absolute inset-0 pointer-events-none select-none overflow-hidden -z-10">
         <div className="absolute top-[10%] right-[5%] text-[8px] font-mono text-slate-400 opacity-10 dark:opacity-[0.05] whitespace-pre-wrap leading-tight rotate-12">
           {`SELECT * FROM growth_metrics\nWHERE conversion_rate < optimal_threshold;`}
@@ -81,23 +81,23 @@ const Process: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto relative">
-        <div className="absolute left-6 md:left-8 top-0 bottom-0 w-[2px] bg-slate-200 dark:bg-white/5 rounded-full" />
+        <div className="absolute left-4 sm:left-6 md:left-8 top-0 bottom-0 w-[2px] bg-slate-200 dark:bg-white/5 rounded-full" />
         
         <motion.div 
           style={{ height: lineHeight }} 
-          className="absolute left-6 md:left-8 top-0 w-[4px] bg-sunset origin-top z-10 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.4)]" 
+          className="absolute left-4 sm:left-6 md:left-8 top-0 w-[4px] bg-sunset origin-top z-10 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.4)]" 
         />
 
         <motion.div
           style={{ top: orbPos }}
-          className="absolute left-6 md:left-8 w-6 h-6 bg-sunset rounded-full -translate-x-1/2 -translate-y-1/2 z-20 shadow-[0_0_30px_#F97316] border-4 border-white dark:border-midnight"
+          className="absolute left-4 sm:left-6 md:left-8 w-5 h-5 sm:w-6 sm:h-6 bg-sunset rounded-full -translate-x-1/2 -translate-y-1/2 z-20 shadow-[0_0_30px_#F97316] border-4 border-white dark:border-midnight"
         >
            <div className="absolute inset-0 rounded-full animate-ping bg-sunset/30 scale-150" />
         </motion.div>
 
-        <div className="space-y-32 md:space-y-56">
+        <div className="space-y-24 sm:space-y-32 md:space-y-56">
           {steps.map((item) => (
-            <div key={item.id} className="relative pl-10 md:pl-28">
+            <div key={item.id} className="relative pl-8 sm:pl-12 md:pl-28">
                <div className="absolute top-0 left-24 md:left-32 hidden lg:block select-none pointer-events-none -z-10 opacity-[0.03]">
                   <span className="text-[14rem] xl:text-[18rem] font-black leading-none text-slate-900 dark:text-white" style={{ WebkitTextStroke: '2px currentColor', color: 'transparent' }}>
                     {item.step}
@@ -112,14 +112,14 @@ const Process: React.FC = () => {
                     transition={{ duration: 0.8, ease: "easeOut" }}
                     className="flex-1 w-full"
                   >
-                    <div className="bg-white dark:bg-[#020617] border border-slate-200 dark:border-white/10 p-6 md:p-14 rounded-[2.5rem] md:rounded-[3.5rem] shadow-lab hover:border-sunset/40 transition-all duration-500 group">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 md:gap-6 mb-6 md:mb-10">
+                    <div className="bg-white dark:bg-[#020617] border border-slate-200 dark:border-white/10 p-8 md:p-14 rounded-[2.5rem] md:rounded-[3.5rem] shadow-lab hover:border-sunset/40 transition-all duration-500 group">
+                      <div className="flex items-center gap-4 md:gap-6 mb-8 md:mb-10">
                         <div className="p-4 md:p-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-2xl shadow-xl group-hover:scale-110 transition-transform shrink-0">
                           {item.icon}
                         </div>
                         <div className="flex flex-col min-w-0">
                           <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.5em] text-sunset mb-2">Phase {item.step}</span>
-                          <h3 className="text-lg sm:text-2xl md:text-4xl font-black uppercase tracking-tighter text-midnight dark:text-white leading-[1.1]">
+                          <h3 className="text-lg sm:text-2xl md:text-4xl font-black uppercase tracking-tight text-midnight dark:text-white leading-[1.1] break-normal">
                             {item.title}
                           </h3>
                         </div>
@@ -155,7 +155,7 @@ const Process: React.FC = () => {
                        </div>
                        <div className="flex items-center gap-3 mb-8">
                           <span className="w-3 h-3 rounded-full bg-electric animate-pulse shadow-[0_0_15px_#3B82F6]" />
-                          <span className="tracking-[0.5em] uppercase font-black text-[10px] text-slate-400 dark:text-slate-600">PIPELINE_EXECUTION_UNIT</span>
+                          <span className="tracking-[0.5em] uppercase font-black text-[10px] text-slate-400 dark:text-slate-600">Pipeline Execution Unit</span>
                        </div>
                        <div className="bg-white dark:bg-midnight p-10 rounded-3xl border border-slate-100 dark:border-white/5 shadow-2xl overflow-hidden whitespace-pre font-mono leading-relaxed relative z-10">
                           <code className="text-slate-600 dark:text-electric font-bold text-sm">

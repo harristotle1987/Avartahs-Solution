@@ -84,9 +84,9 @@ const BookingCalendar: React.FC = () => {
     try {
       await saveBooking(bookingData);
       
-      const serviceID = process.env.EMAILJS_SERVICE_ID || 'default_service';
-      const templateID = process.env.EMAILJS_TEMPLATE_ID || 'template_booking';
-      const publicKey = process.env.EMAILJS_PUBLIC_KEY || '';
+      const serviceID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'default service';
+      const templateID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template booking';
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || '';
 
       if (publicKey) {
         await emailjs.send(
@@ -118,11 +118,11 @@ const BookingCalendar: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-[#0f172a]/90 rounded-[1.5rem] md:rounded-[2.5rem] shadow-lab overflow-hidden border border-slate-200 dark:border-white/10 text-midnight dark:text-gray-100 w-full max-w-lg relative min-h-[480px] flex flex-col font-mono transition-colors duration-500"
+      className="bg-white dark:bg-[#0f172a]/90 rounded-[1.5rem] md:rounded-[2.5rem] shadow-lab overflow-hidden border border-slate-200 dark:border-white/10 text-midnight dark:text-gray-100 w-full max-w-lg relative min-h-[440px] md:min-h-[480px] flex flex-col font-mono transition-colors duration-500"
     >
       <AnimatePresence mode="wait">
         {step === 'datetime' ? (
-          <motion.div key="datetime" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-5 md:p-8 flex-1 flex flex-col">
+          <motion.div key="datetime" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 sm:p-5 md:p-8 flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm md:text-xl font-black uppercase tracking-tighter text-midnight dark:text-white">{months[currentMonth]} {currentYear}</h3>
               <div className="flex gap-1">
@@ -135,7 +135,7 @@ const BookingCalendar: React.FC = () => {
               {days.map((day, i) => <div key={i}>{day}</div>)}
             </div>
 
-            <div className="grid grid-cols-7 gap-1 mb-2">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-2">
               {calendarGrid.map((day, idx) => {
                 const targetDate = day ? new Date(currentYear, currentMonth, day) : null;
                 const today = new Date();
@@ -149,7 +149,7 @@ const BookingCalendar: React.FC = () => {
                     {day ? (
                       <button 
                         onClick={() => handleDateSelection(day)} 
-                        className={`w-full h-full rounded-md text-[10px] font-black transition-all ${
+                        className={`w-full h-full rounded-md text-[9px] sm:text-[10px] font-black transition-all ${
                           isSelected 
                             ? 'bg-sunset text-white shadow-lg scale-110 z-10' 
                             : isPast
@@ -183,12 +183,12 @@ const BookingCalendar: React.FC = () => {
             {selectedDate && (
               <div className="mt-2 space-y-3">
                 <span className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-600 tracking-widest">Available Slots</span>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   {timeSlots.map(time => (
                     <button 
                       key={time} 
                       onClick={() => setSelectedTime(time)} 
-                      className={`px-3 py-3 rounded-lg text-[11px] font-[900] transition-all border ${
+                      className={`px-2 py-2.5 sm:px-3 sm:py-3 rounded-lg text-[10px] sm:text-[11px] font-[900] transition-all border ${
                         selectedTime === time 
                           ? 'bg-midnight dark:bg-white text-white dark:text-midnight border-midnight dark:border-white shadow-lg' 
                           : 'bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-500 border-transparent hover:text-midnight dark:hover:text-white'
@@ -204,7 +204,7 @@ const BookingCalendar: React.FC = () => {
             <button 
               disabled={!selectedDate || !selectedTime} 
               onClick={handleProceedToEmail} 
-              className="mt-6 w-full py-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-xl font-black text-xs md:text-sm uppercase tracking-[0.2em] disabled:opacity-20 flex items-center justify-center gap-3 hover:bg-sunset dark:hover:bg-sunset dark:hover:text-white transition-all shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]"
+              className="mt-4 sm:mt-6 w-full py-4 sm:py-5 bg-midnight dark:bg-white text-white dark:text-midnight rounded-xl font-black text-xs md:text-sm uppercase tracking-[0.2em] disabled:opacity-20 flex items-center justify-center gap-3 hover:bg-sunset dark:hover:bg-sunset dark:hover:text-white transition-all shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]"
             >
               CONTINUE <ArrowRight size={18} />
             </button>

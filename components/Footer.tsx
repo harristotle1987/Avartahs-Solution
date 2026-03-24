@@ -28,18 +28,18 @@ const Footer: React.FC = () => {
   ];
 
   return (
-    <footer className="pt-24 pb-8 px-6 md:px-12 lg:px-24 bg-slate-50 dark:bg-black border-t border-slate-200 dark:border-white/5 overflow-hidden relative font-sans text-slate-500 dark:text-slate-400">
+    <footer className="pt-16 md:pt-24 pb-8 px-6 md:px-12 lg:px-24 bg-black border-t border-white/5 overflow-hidden relative font-sans text-slate-400">
       {/* Background visual element */}
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-sunset/50 to-transparent opacity-20" />
       
       <div className="max-w-[1450px] mx-auto relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24 mb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 mb-20">
           <div className="lg:col-span-7 flex flex-col">
             <div className="flex items-center gap-3 mb-8">
-              <span className="text-3xl font-[900] tracking-[-0.08em] text-slate-900 dark:text-white uppercase">AVARTAH</span>
-              <div className="px-2 py-0.5 bg-sunset/10 border border-sunset/20 rounded text-[8px] font-black text-sunset uppercase tracking-widest">LAB_v4.2</div>
+              <span className="text-3xl font-[900] tracking-[-0.08em] text-white uppercase">AVARTAH</span>
+              <div className="px-2 py-0.5 bg-sunset/10 border border-sunset/20 rounded text-[8px] font-black text-sunset uppercase tracking-widest">Lab v4.2</div>
             </div>
-            <p className="text-slate-600 dark:text-slate-400 text-lg md:text-xl font-medium leading-tight mb-10 max-w-lg">Engineering high-conversion revenue systems through technical precision and behavioral science protocols.</p>
+            <p className="text-slate-400 text-base sm:text-lg md:text-xl font-medium leading-tight mb-10 max-w-lg">Engineering high-conversion revenue systems through technical precision and behavioral science protocols.</p>
             <div className="flex flex-wrap gap-3">
               {socialLinks.map((social, i) => (
                 <a 
@@ -47,7 +47,7 @@ const Footer: React.FC = () => {
                   href={social.href} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="w-11 h-11 flex items-center justify-center bg-white border border-slate-200 dark:bg-white/5 dark:border-white/10 rounded-xl text-slate-700 dark:text-white hover:bg-sunset hover:border-sunset hover:text-white transition-all shadow-sm group"
+                  className="w-11 h-11 flex items-center justify-center bg-white/5 border border-white/10 rounded-xl text-white hover:bg-sunset hover:border-sunset transition-all shadow-sm group"
                 >
                   <social.Icon size={16} />
                 </a>
@@ -55,15 +55,15 @@ const Footer: React.FC = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-5 border-l border-slate-200 dark:border-white/5 pl-8">
-            <h4 className="font-black text-[9px] uppercase tracking-[0.4em] text-slate-400 dark:text-slate-600 mb-8">Navigation</h4>
+          <div className="lg:col-span-5 border-l-0 lg:border-l border-white/5 pl-0 lg:pl-8">
+            <h4 className="font-black text-[9px] uppercase tracking-[0.4em] text-slate-600 mb-8">Navigation</h4>
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
               {navLinks.map((link, lIdx) => (
                 <li key={lIdx}>
                   <ScrollLink 
                     to={link.to} 
                     smooth={true} 
-                    className="text-slate-600 dark:text-slate-400 hover:text-sunset transition-all cursor-pointer text-[10px] font-black uppercase tracking-widest flex items-center justify-between group"
+                    className="text-slate-400 hover:text-sunset transition-all cursor-pointer text-[10px] font-black uppercase tracking-widest flex items-center justify-between group"
                   >
                     {link.name} <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-all text-sunset" />
                   </ScrollLink>
@@ -73,24 +73,24 @@ const Footer: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-10 border-y border-slate-200 dark:border-white/5 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-10 border-y border-white/5 mb-10">
           {[
-            { icon: <ShieldCheck size={14} className="text-electric" />, label: 'Security', value: 'LAB_ENCRYPTED' },
-            { icon: <Zap size={14} className="text-sunset" />, label: 'Speed', value: 'SUB-SECOND_EDGE' },
-            { icon: <HardDrive size={14} className="text-slate-400" />, label: 'Architecture', value: 'REACT_V19' },
+            { icon: <ShieldCheck size={14} className="text-electric" />, label: 'Security', value: 'Lab Encrypted' },
+            { icon: <Zap size={14} className="text-sunset" />, label: 'Speed', value: 'Sub Second Edge' },
+            { icon: <HardDrive size={14} className="text-slate-400" />, label: 'Architecture', value: 'React v19' },
             { icon: <Globe size={14} className="text-slate-400" />, label: 'Feed', value: time }
           ].map((item, i) => (
             <div key={i} className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
                 {item.icon}
-                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600">{item.label}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">{item.label}</span>
               </div>
-              <p className="text-[10px] font-black text-slate-900 dark:text-white">{item.value}</p>
+              <p className="text-[10px] font-black text-white">{item.value}</p>
             </div>
           ))}
         </div>
         
-        <div className="flex flex-col md:flex-row justify-between items-center text-slate-400 dark:text-slate-600 text-[8px] font-black tracking-[0.4em] uppercase gap-6 py-4">
+        <div className="flex flex-col md:flex-row justify-between items-center text-slate-600 text-[8px] font-black tracking-[0.4em] uppercase gap-6 py-4">
           <p>© {currentYear} AVARTAH SOLUTIONS. ALL PROTOCOLS RESERVED.</p>
           <div className="flex items-center gap-10">
             <Link to="/privacy" className="hover:text-sunset transition-colors">Privacy</Link>

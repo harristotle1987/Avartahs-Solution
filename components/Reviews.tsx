@@ -33,19 +33,19 @@ const Reviews: React.FC = () => {
           initial={{ opacity: 0, x: -20 }}
           whileInView={{ opacity: 1, x: 0 }}
           transition={{ delay: i * 0.1 }}
-          className="bg-white dark:bg-[#020617] p-8 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-premium group hover:border-sunset/20 transition-all"
+          className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-premium group hover:border-sunset/20 transition-all"
         >
           <div className="flex items-start gap-4">
              <Quote className="text-sunset shrink-0" size={24} />
              <div>
-                <p className="text-midnight dark:text-white text-lg font-bold leading-tight mb-4 italic">
+                <p className="text-[#0F172A] text-lg font-bold leading-tight mb-4 italic">
                   {rev.text}
                 </p>
                 <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 bg-slate-100 dark:bg-white/10 rounded-full" />
+                   <div className="w-8 h-8 bg-slate-100 rounded-full" />
                    <div>
-                      <p className="font-black text-[10px] uppercase tracking-tighter text-midnight dark:text-white">{rev.name}</p>
-                      <p className="text-slate-400 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">{rev.role}</p>
+                      <p className="font-black text-[10px] uppercase tracking-tighter">{rev.name}</p>
+                      <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest">{rev.role}</p>
                    </div>
                 </div>
              </div>

@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabase';
+import { sql, isNeonConfigured } from './neon';
 import { SiteAnalytics } from '../types';
 
 // Safe ID Generator
@@ -49,17 +49,12 @@ export const analytics = {
   },
 
   async syncInitial() {
-    if (!isSupabaseConfigured) return;
+    if (!isNeonConfigured) return;
     try {
-      await supabase.from('site_analytics').insert([{
-        visitor_id: session.visitor_id,
-        session_start: session.session_start,
-        cta_clicks: session.cta_clicks,
-        form_progress: session.form_progress,
-        submitted: session.submitted,
-        exit_page: session.exit_page,
-        is_pricing_sensitive: false
-      }]);
+      await sql`
+        INSERT INTO site_analytics (visitor_id, session_start, cta_clicks, form_progress, submitted, exit_page, is_pricing_sensitive)
+        VALUES (${session.visitor_id}, ${session.session_start}, ${JSON.stringify(session.cta_clicks)}, ${session.form_progress}, ${session.submitted}, ${session.exit_page}, false)
+      `;
     } catch (e) {
       console.warn('Analytics Init Sync Failed', e);
     }
@@ -112,20 +107,20 @@ export const analytics = {
   },
 
   async syncCurrent() {
-    if (!isSupabaseConfigured) return;
+    if (!isNeonConfigured) return;
     try {
-      await supabase
-        .from('site_analytics')
-        .update({ 
-          cta_clicks: session.cta_clicks, 
-          form_progress: session.form_progress,
-          submitted: session.submitted,
-          is_pricing_sensitive: session.is_pricing_sensitive,
-          step_durations: session.step_durations,
-          whatsapp_handshake: session.whatsapp_handshake,
-          calendly_handshake: session.calendly_handshake
-        })
-        .eq('visitor_id', session.visitor_id);
+      await sql`
+        UPDATE site_analytics 
+        SET 
+          cta_clicks = ${JSON.stringify(session.cta_clicks)}, 
+          form_progress = ${session.form_progress},
+          submitted = ${session.submitted},
+          is_pricing_sensitive = ${session.is_pricing_sensitive},
+          step_durations = ${JSON.stringify(session.step_durations)},
+          whatsapp_handshake = ${session.whatsapp_handshake},
+          calendly_handshake = ${session.calendly_handshake}
+        WHERE visitor_id = ${session.visitor_id}
+      `;
     } catch (e) {
       console.warn('Analytics Sync Failed', e);
     }
@@ -137,37 +132,23 @@ export const analytics = {
     session.duration_seconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
     session.exit_page = window.location.pathname;
 
-    const payload = JSON.stringify({
-      visitor_id: session.visitor_id,
-      duration_seconds: session.duration_seconds,
-      cta_clicks: session.cta_clicks,
-      form_progress: session.form_progress,
-      submitted: session.submitted,
-      exit_page: session.exit_page,
-      step_durations: session.step_durations,
-      is_pricing_sensitive: session.is_pricing_sensitive,
-      whatsapp_handshake: session.whatsapp_handshake,
-      calendly_handshake: session.calendly_handshake
-    });
-
-    if (isSupabaseConfigured) {
-      const url = `${supabaseUrl}/rest/v1/site_analytics?visitor_id=eq.${session.visitor_id}`;
-      const headers = {
-        'apikey': supabaseAnonKey,
-        'Authorization': `Bearer ${supabaseAnonKey}`,
-        'Content-Type': 'application/json'
-      };
-
-      try {
-        fetch(url, {
-          method: 'PATCH',
-          body: payload,
-          headers,
-          keepalive: true
-        });
-      } catch (e) {
-        // Fetch interrupted
-      }
+    if (isNeonConfigured) {
+      // For flush on exit, we use a fire-and-forget approach
+      // Neon's driver uses fetch internally so this should be relatively safe
+      sql`
+        UPDATE site_analytics 
+        SET 
+          duration_seconds = ${session.duration_seconds},
+          exit_page = ${session.exit_page},
+          cta_clicks = ${JSON.stringify(session.cta_clicks)}, 
+          form_progress = ${session.form_progress},
+          submitted = ${session.submitted},
+          is_pricing_sensitive = ${session.is_pricing_sensitive},
+          step_durations = ${JSON.stringify(session.step_durations)},
+          whatsapp_handshake = ${session.whatsapp_handshake},
+          calendly_handshake = ${session.calendly_handshake}
+        WHERE visitor_id = ${session.visitor_id}
+      `.catch(e => console.warn('Analytics Flush Failed', e));
     }
   }
 };

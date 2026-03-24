@@ -34,9 +34,9 @@ const CorrectionDocument: React.FC<CorrectionDocumentProps> = ({ report, url, on
           <h1 className="text-3xl md:text-5xl font-[900] uppercase tracking-tighter">Forensic Audit</h1>
         </div>
         <div className="text-left md:text-right">
-          <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest mb-1">AUDIT_TARGET</p>
+          <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest mb-1">Audit Target</p>
           <p className="text-lg font-bold truncate max-w-[300px]">{url}</p>
-          <p className="text-sunset font-mono text-[10px] mt-1 font-black">CORE_ENGINE: AVARTAH_FORENSIC_v4.2</p>
+          <p className="text-sunset font-mono text-[10px] mt-1 font-black">Core Engine: Avartah Forensic v4.2</p>
         </div>
       </div>
 

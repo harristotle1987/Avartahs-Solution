@@ -50,7 +50,7 @@ const FAQ: React.FC = () => {
             className="w-full py-6 flex items-center justify-between text-left group transition-all"
           >
             <span className="text-lg md:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-gray-100 group-hover:text-sunset transition-colors">{faq.q}</span>
-            <div className="p-2 rounded-full bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-400 group-hover:text-sunset transition-all shrink-0 ml-6">
+            <div className="p-2 rounded-full bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-gray-600 group-hover:text-sunset transition-all shrink-0 ml-6">
               {open === faq.q ? <Minus size={16} /> : <Plus size={16} />}
             </div>
           </button>

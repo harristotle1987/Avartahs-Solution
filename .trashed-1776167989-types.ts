@@ -1,18 +1,4 @@
 
-export interface Project {
-  id: string;
-  title: string;
-  description: string;
-  media: {
-    url: string;
-    type: 'image' | 'video';
-    name: string;
-  }[];
-  tags: string[];
-  link?: string;
-  created_at: string;
-}
-
 export interface Lead {
   id: string;
   session_id: string;
@@ -22,7 +8,7 @@ export interface Lead {
   revenue_tier: string;
   core_problem: string;
   cta_source: string;
-  status: 'pending' | 'contacted' | 'delivered' | 'closed';
+  status: 'pending' | 'contacted' | 'audit_delivered' | 'closed';
   created_at: string;
   // Behavioral Telemetry
   friction_score?: number;

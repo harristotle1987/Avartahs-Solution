@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 const ASSET_LIBRARY: Record<string, string> = {
   background: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop",
   centerpiece: "https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=1932&auto=format&fit=crop",
-  ui_logic: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop",
+  uiLogic: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop",
   backend: "https://images.unsplash.com/photo-1558494949-ef010cbdcc48?q=80&w=2070&auto=format&fit=crop",
   audit: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2015&auto=format&fit=crop",
   default: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070&auto=format&fit=crop"
@@ -18,7 +18,7 @@ interface ServiceImageProps {
 export const ServiceCardImage: React.FC<ServiceImageProps> = ({ prompt }) => {
   let assetUrl = ASSET_LIBRARY.default;
   const p = prompt.toLowerCase();
-  if (p.includes('ui') || p.includes('ux')) assetUrl = ASSET_LIBRARY.ui_logic;
+  if (p.includes('ui') || p.includes('ux')) assetUrl = ASSET_LIBRARY.uiLogic;
   if (p.includes('backend') || p.includes('server')) assetUrl = ASSET_LIBRARY.backend;
   if (p.includes('audit') || p.includes('data')) assetUrl = ASSET_LIBRARY.audit;
 

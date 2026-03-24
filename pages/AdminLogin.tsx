@@ -25,10 +25,10 @@ const AdminLogin: React.FC = () => {
 
     // Simulate forensic security handshake
     const steps = [
-      "ESTABLISHING_SECURE_NODE",
-      "DECRYPTING_CREDENTIALS",
-      "VALIDATING_ADMIN_ID",
-      "HANDSHAKE_COMPLETE"
+      "ESTABLISHING SECURE NODE",
+      "DECRYPTING CREDENTIALS",
+      "VALIDATING ADMIN ID",
+      "HANDSHAKE COMPLETE"
     ];
 
     for (const step of steps) {
@@ -36,7 +36,7 @@ const AdminLogin: React.FC = () => {
       await new Promise(r => setTimeout(r, 400));
     }
 
-    if (login(password)) {
+    if (await login(password)) {
       navigate('/admin/dashboard');
     } else {
       setError(true);
