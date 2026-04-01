@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, Loader2, Calendar, AlertCircle } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { analytics } from '../lib/analytics';
-import { saveBooking } from '../lib/mockApi';
+import { saveBooking } from '../lib/api';
 
 const BookingCalendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());

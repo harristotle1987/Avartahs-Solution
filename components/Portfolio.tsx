@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUpRight, ExternalLink, Cpu, Layout, MessageSquare, Camera, Download, Loader2, AlertCircle, Activity, Globe, ChevronDown, ChevronUp, ZoomIn, X, RotateCcw, Maximize, Minimize } from 'lucide-react';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { getProjects } from '../lib/mockApi';
+import { getProjects } from '../lib/api';
 import { Project } from '../types';
 
 const PortfolioCard: React.FC<{ project: Project, index: number }> = ({ project, index }) => {

@@ -101,12 +101,14 @@ app.use((req, res, next) => {
 
 // Projects Proxy
 app.get('/api/projects', async (req, res) => {
+  console.log('[Backend] Fetching projects...');
   try {
     const data = await sql`SELECT * FROM projects ORDER BY created_at DESC`;
+    console.log('[Backend] Projects fetched:', data.length);
     res.json(data);
   } catch (error) {
     console.error('Neon Fetch Error (Projects):', error);
-    res.status(500).json({ error: 'Failed to fetch projects' });
+    res.status(500).json({ error: 'Failed to fetch projects', details: error });
   }
 });
 
@@ -238,6 +240,28 @@ app.get('/api/health', (req, res) => {
     message: 'Avartah Solutions API Gateway is active',
     timestamp: new Date().toISOString()
   });
+});
+
+// Database Health Check
+app.get('/api/db-health', async (req, res) => {
+  try {
+    await sql`SELECT 1`;
+    res.json({ status: 'connected' });
+  } catch (error) {
+    console.error('[Backend] Database health check failed:', error);
+    res.status(500).json({ status: 'disconnected', error });
+  }
+});
+
+// Project Count
+app.get('/api/projects/count', async (req, res) => {
+  try {
+    const data = await sql`SELECT COUNT(*) FROM projects`;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('[Backend] Failed to count projects:', error);
+    res.status(500).json({ error: 'Failed to count projects' });
+  }
 });
 
 // Vite middleware for development

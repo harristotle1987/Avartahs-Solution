@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Lead, SiteAnalytics, Project } from '../types';
-import { getLeads, updateLead, updateLeadStatus, getAnalytics, deleteLead, getProjects, saveProject, deleteProject } from '../lib/mockApi';
+import { getLeads, updateLead, updateLeadStatus, getAnalytics, deleteLead, getProjects, saveProject, deleteProject } from '../lib/api';
 import { isAuthenticated, logout } from '../lib/auth';
 import { isNeonConfigured } from '../lib/config';
 import { useTheme } from '../context/ThemeContext';

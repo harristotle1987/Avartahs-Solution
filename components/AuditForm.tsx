@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, ChevronRight, CheckCircle, MessageSquare, Calendar, X, Zap, Globe, Mail, Smartphone } from 'lucide-react';
 import { analytics } from '../lib/analytics';
-import { saveLead } from '../lib/mockApi';
+import { saveLead } from '../lib/api';
 import { Link as ScrollLink } from 'react-scroll';
 import { SectionId } from '../types';
 import emailjs from '@emailjs/browser';

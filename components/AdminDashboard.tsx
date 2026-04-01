@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Lead, SiteAnalytics } from '../types';
-import { getLeads, updateLeadStatus, getAnalytics, deleteLead } from '../lib/mockApi';
+import { getLeads, updateLeadStatus, getAnalytics, deleteLead } from '../lib/api';
 import { isAuthenticated, logout } from '../lib/auth';
 
 const WeeklySummary: React.FC<{ data: SiteAnalytics[]; leads: Lead[] }> = ({ data, leads }) => {

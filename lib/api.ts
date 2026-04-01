@@ -1,0 +1,196 @@
+
+import { Lead, SiteAnalytics, Project } from '../types';
+
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
+/**
+ * FETCH: PROJECTS
+ */
+export const getProjects = async (): Promise<Project[]> => {
+  console.log('[Frontend] Fetching projects...');
+  try {
+    const response = await fetch('/api/projects');
+    console.log('[Frontend] Projects response status:', response.status);
+    if (response.ok) {
+      const data = await response.json();
+      console.log('[Frontend] Projects data:', data);
+      return data;
+    }
+    throw new Error(`Failed to fetch projects: ${response.statusText}`);
+  } catch (e) {
+    console.error('API Fetch Error (Projects):', e);
+    return [];
+  }
+};
+
+/**
+ * SAVE: PROJECT
+ */
+export const saveProject = async (project: Partial<Project>): Promise<Project> => {
+  const newProject = {
+    ...project,
+    id: project.id || generateUUID(),
+    created_at: project.created_at || new Date().toISOString(),
+    media: project.media || [],
+    tags: project.tags || [],
+  } as Project;
+
+  try {
+    const response = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newProject)
+    });
+    if (response.ok) return newProject;
+    throw new Error('Failed to save project');
+  } catch (e) {
+    console.error('API Save Error (Project):', e);
+    throw e;
+  }
+};
+
+/**
+ * DELETE: PROJECT
+ */
+export const deleteProject = async (id: string): Promise<void> => {
+  try {
+    const response = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete project');
+  } catch (e) {
+    console.error('API Delete Error (Project):', e);
+    throw e;
+  }
+};
+
+/**
+ * FETCH: LEADS
+ */
+export const getLeads = async (): Promise<Lead[]> => {
+  try {
+    const response = await fetch('/api/leads');
+    if (response.ok) {
+      return await response.json();
+    }
+    throw new Error('Failed to fetch leads');
+  } catch (e) {
+    console.error('API Fetch Error (Leads):', e);
+    return [];
+  }
+};
+
+/**
+ * FETCH: ANALYTICS
+ */
+export const getAnalytics = async (): Promise<SiteAnalytics[]> => {
+  try {
+    const response = await fetch('/api/analytics');
+    if (response.ok) {
+      return await response.json();
+    }
+    throw new Error('Failed to fetch analytics');
+  } catch (e) {
+    console.error('API Fetch Error (Analytics):', e);
+    return [];
+  }
+};
+
+/**
+ * SAVE: LEAD DATA
+ */
+export const saveLead = async (data: any): Promise<any> => {
+  const newLead = {
+    id: generateUUID(),
+    session_id: data.session_id,
+    target_url: data.target_url,
+    user_email: data.user_email,
+    user_phone: data.user_phone,
+    revenue_tier: data.revenue_tier,
+    core_problem: data.core_problem || "Initial scan pending",
+    cta_source: data.cta_source || 'direct v4',
+    status: 'pending',
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    const response = await fetch('/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newLead)
+    });
+    if (response.ok) return newLead;
+    throw new Error('Failed to save lead');
+  } catch (e) {
+    console.error('API Save Error (Lead):', e);
+    throw e;
+  }
+};
+
+/**
+ * SAVE: SESSION BOOKING
+ */
+export const saveBooking = async (data: any): Promise<any> => {
+  const bookingEntry = {
+    id: generateUUID(),
+    ...data,
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    const response = await fetch('/api/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bookingEntry)
+    });
+    if (response.ok) return bookingEntry;
+    throw new Error('Failed to save booking');
+  } catch (e) {
+    console.error('API Save Error (Booking):', e);
+    throw e;
+  }
+};
+
+/**
+ * UPDATE: LEAD DATA
+ */
+export const updateLead = async (id: string, updates: Partial<Lead>): Promise<void> => {
+  try {
+    const response = await fetch(`/api/leads/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!response.ok) throw new Error('Failed to update lead');
+  } catch (e) {
+    console.error('API Update Error (Lead):', e);
+    throw e;
+  }
+};
+
+/**
+ * UPDATE: LEAD STATUS
+ */
+export const updateLeadStatus = async (id: string, status: Lead['status']): Promise<void> => {
+  return updateLead(id, { status });
+};
+
+/**
+ * DELETE: LEAD RECORD
+ */
+export const deleteLead = async (id: string): Promise<void> => {
+  try {
+    const response = await fetch(`/api/leads/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete lead');
+  } catch (e) {
+    console.error('API Delete Error (Lead):', e);
+    throw e;
+  }
+};
