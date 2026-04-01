@@ -25,18 +25,11 @@ let session: SiteAnalytics = {
 };
 
 let stepStartTime = Date.now();
-const ANALYTICS_KEY = 'avartah_current_session';
 
 export const analytics = {
   init() {
     try {
-      const saved = localStorage.getItem(ANALYTICS_KEY);
-      if (saved) {
-        session = { ...session, ...JSON.parse(saved) };
-      } else {
-        localStorage.setItem(ANALYTICS_KEY, JSON.stringify(session));
-        this.syncInitial();
-      }
+      this.syncInitial();
       
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
@@ -62,14 +55,12 @@ export const analytics = {
 
   logCTAClick(source: 'hero' | 'footer' | 'navbar') {
     session.cta_clicks[source] = (session.cta_clicks[source] || 0) + 1;
-    this.saveLocal();
     this.syncCurrent();
   },
 
   logHandshake(type: 'whatsapp' | 'calendly') {
     if (type === 'whatsapp') session.whatsapp_handshake = true;
     if (type === 'calendly') session.calendly_handshake = true;
-    this.saveLocal();
     this.syncCurrent();
   },
 
@@ -88,22 +79,12 @@ export const analytics = {
     session.form_progress = step;
     stepStartTime = now;
     
-    this.saveLocal();
     this.syncCurrent();
   },
 
   setSubmitted() {
     session.submitted = true;
-    this.saveLocal();
     this.syncCurrent();
-  },
-
-  saveLocal() {
-    try {
-      localStorage.setItem(ANALYTICS_KEY, JSON.stringify(session));
-    } catch (e) {
-      // Storage full or unavailable
-    }
   },
 
   async syncCurrent() {

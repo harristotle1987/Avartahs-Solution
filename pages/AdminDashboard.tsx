@@ -254,6 +254,19 @@ const AdminDashboard: React.FC = () => {
     onConfirm: () => {},
   });
 
+  // Image Modal State
+  const [imageModal, setImageModal] = useState<{
+    isOpen: boolean;
+    url: string;
+    description: string;
+  }>({
+    isOpen: false,
+    url: '',
+    description: '',
+  });
+
+  // ... (existing state)
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -505,25 +518,25 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-600 font-mono p-4 md:p-8 lg:p-10 transition-colors">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans p-4 md:p-8 lg:p-10 transition-colors">
       <AnimatePresence>
         {toast && (
-          <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`fixed bottom-10 right-10 z-[200] px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-2xl border ${toast.type === 'success' ? 'bg-midnight dark:bg-white text-white dark:text-midnight border-white/10' : 'bg-red-500 text-white border-red-400'}`}>
+          <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`fixed bottom-10 right-10 z-[200] px-6 py-4 rounded-2xl font-semibold text-xs uppercase tracking-widest shadow-2xl border ${toast.type === 'success' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-zinc-700' : 'bg-red-500 text-white border-red-400'}`}>
             {toast.message}
           </motion.div>
         )}
       </AnimatePresence>
 
-      <header className="max-w-[1600px] mx-auto flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12 border-b border-slate-200 dark:border-white/5 pb-10">
+      <header className="max-w-[1600px] mx-auto flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12 border-b border-zinc-200 dark:border-zinc-800 pb-10">
         <div className="w-full lg:w-auto">
           <div className="flex items-center gap-3 mb-2">
-            <Database size={22} className="text-electric" />
-            <h1 className="text-midnight dark:text-white text-xl md:text-2xl font-black tracking-tighter uppercase">AVARTAH // Operations Ledger</h1>
+            <Database size={24} className="text-indigo-600" />
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Admin Control Center</h1>
           </div>
           <div className="flex items-center gap-4">
-             <div className={`w-2 h-2 rounded-full ${isNeonConfigured ? 'bg-green-500 animate-pulse' : 'bg-electric'}`} />
-             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                Node Protocol: {isNeonConfigured ? 'Remote Sync Active' : 'Local Storage Mode'}
+             <div className={`w-2 h-2 rounded-full ${isNeonConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-indigo-500'}`} />
+             <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                System Status: {isNeonConfigured ? 'Connected' : 'Local Mode'}
              </span>
           </div>
         </div>
@@ -531,7 +544,7 @@ const AdminDashboard: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3 md:gap-4 w-full lg:w-auto">
           <button 
             onClick={toggleTheme}
-            className="p-3 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-white/5 hover:text-midnight dark:hover:text-white transition-all shadow-sm"
+            className="p-3 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:text-indigo-600 transition-all shadow-sm"
             aria-label="Toggle Theme"
           >
             {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
@@ -539,18 +552,18 @@ const AdminDashboard: React.FC = () => {
 
           <button 
             onClick={() => navigate('/')} 
-            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-3 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-white/5 hover:text-midnight dark:hover:text-white transition-all shadow-sm"
+            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 rounded-xl text-xs font-semibold uppercase tracking-wider border border-zinc-200 dark:border-zinc-800 hover:text-indigo-600 transition-all shadow-sm"
           >
-            <Globe size={14} className="shrink-0" /> <span className="whitespace-nowrap">View Live Site</span>
+            <Globe size={16} className="shrink-0" /> View Live Site
           </button>
           
-          <div className="flex-1 lg:flex-none flex bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-            <button onClick={() => setActiveTab('leads')} className={`flex-1 px-3 md:px-6 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black transition-all whitespace-nowrap ${activeTab === 'leads' ? 'bg-midnight dark:bg-white text-white dark:text-midnight' : 'text-slate-400'}`}>Data Ledger</button>
-            <button onClick={() => setActiveTab('projects')} className={`flex-1 px-3 md:px-6 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black transition-all whitespace-nowrap ${activeTab === 'projects' ? 'bg-midnight dark:bg-white text-white dark:text-midnight' : 'text-slate-400'}`}>PROJECTS</button>
-            <button onClick={() => setActiveTab('analytics')} className={`flex-1 px-3 md:px-6 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black transition-all whitespace-nowrap ${activeTab === 'analytics' ? 'bg-midnight dark:bg-white text-white dark:text-midnight' : 'text-slate-400'}`}>METRICS</button>
+          <div className="flex-1 lg:flex-none flex bg-white dark:bg-zinc-900 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+            <button onClick={() => setActiveTab('leads')} className={`flex-1 px-6 py-3 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${activeTab === 'leads' ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:text-zinc-900'}`}>Data Ledger</button>
+            <button onClick={() => setActiveTab('projects')} className={`flex-1 px-6 py-3 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${activeTab === 'projects' ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:text-zinc-900'}`}>Projects</button>
+            <button onClick={() => setActiveTab('analytics')} className={`flex-1 px-6 py-3 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${activeTab === 'analytics' ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:text-zinc-900'}`}>Metrics</button>
           </div>
 
-          <button onClick={() => { logout(); navigate('/admin/login'); }} className="flex-1 lg:flex-none px-4 md:px-6 py-3 bg-red-50 dark:bg-red-500/10 text-red-600 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest border border-red-100 dark:border-red-500/20 whitespace-nowrap text-center">LOGOUT</button>
+          <button onClick={() => { logout(); navigate('/admin/login'); }} className="flex-1 lg:flex-none px-6 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl text-xs font-semibold uppercase tracking-wider border border-red-100 dark:border-red-900/30 whitespace-nowrap text-center">Logout</button>
         </div>
       </header>
 
@@ -796,52 +809,58 @@ const AdminDashboard: React.FC = () => {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {projects.map((project) => (
-                  <div key={project.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[2rem] overflow-hidden shadow-sm group">
-                    <div className="aspect-video bg-slate-100 dark:bg-white/5 relative overflow-hidden">
+                  <motion.div 
+                    key={project.id} 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group"
+                  >
+                    <div className="aspect-video bg-zinc-100 dark:bg-zinc-800 relative overflow-hidden cursor-pointer" onClick={() => project.media?.[0] && setImageModal({ isOpen: true, url: project.media[0].url, description: project.description })}>
                       {project.media?.[0] ? (
                         project.media[0].type === 'image' ? (
                           <img src={project.media[0].url} alt={project.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : project.media[0].url.includes('youtube.com/embed') ? (
-                          <div className="w-full h-full bg-midnight flex items-center justify-center">
-                            <Video size={40} className="text-white/20" />
+                          <div className="w-full h-full bg-zinc-950 flex items-center justify-center">
+                            <Video size={40} className="text-zinc-700" />
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-[10px] font-black text-white bg-red-600 px-3 py-1 rounded">YOUTUBE</span>
+                              <span className="text-[10px] font-bold text-white bg-red-600 px-3 py-1 rounded-full">YOUTUBE</span>
                             </div>
                           </div>
                         ) : (
                           <video src={project.media[0].url} className="w-full h-full object-cover" muted />
                         )
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <div className="w-full h-full flex items-center justify-center text-zinc-400">
                           <ImageIcon size={40} />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-midnight/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                      <div className="absolute inset-0 bg-zinc-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                         <button 
-                          onClick={() => { 
+                          onClick={(e) => { 
+                            e.stopPropagation();
                             setEditingProject(project); 
                             setTagInput(project.tags?.join(', ') || '');
                             setIsEditingProject(true); 
                           }} 
-                          className="p-3 bg-white text-midnight rounded-full hover:scale-110 transition-transform"
+                          className="p-3 bg-white text-zinc-900 rounded-full hover:scale-110 transition-transform"
                         >
                           <Edit3 size={18} />
                         </button>
-                        <button onClick={() => handleDeleteProject(project.id)} className="p-3 bg-red-500 text-white rounded-full hover:scale-110 transition-transform"><Trash2 size={18} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDeleteProject(project.id); }} className="p-3 bg-red-600 text-white rounded-full hover:scale-110 transition-transform"><Trash2 size={18} /></button>
                       </div>
                     </div>
                     <div className="p-6">
-                      <h3 className="text-midnight dark:text-white font-black uppercase tracking-tight mb-2">{project.title}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-4">{project.description}</p>
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-2">{project.title}</h3>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2 mb-4">{project.description}</p>
                       <div className="flex flex-wrap gap-2">
                         {project.tags?.map(tag => (
-                          <span key={tag} className="text-[8px] font-black px-2 py-1 bg-slate-100 dark:bg-white/5 text-slate-400 rounded uppercase tracking-widest">{tag}</span>
+                          <span key={tag} className="text-[10px] font-semibold px-3 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-full">{tag}</span>
                         ))}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 
@@ -1282,6 +1301,35 @@ const AdminDashboard: React.FC = () => {
             </motion.div>
           </div>
         )}
+        {/* Image Modal */}
+        <AnimatePresence>
+          {imageModal.isOpen && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-midnight/90 backdrop-blur-md"
+              onClick={() => setImageModal({ isOpen: false, url: '', description: '' })}
+            >
+              <motion.div 
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.9 }}
+                className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] max-w-2xl w-full shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <img src={imageModal.url} alt="Project" className="w-full rounded-xl mb-4" referrerPolicy="no-referrer" />
+                <p className="text-slate-600 dark:text-slate-300 text-sm font-medium">{imageModal.description}</p>
+                <button 
+                  onClick={() => setImageModal({ isOpen: false, url: '', description: '' })}
+                  className="mt-6 w-full py-3 bg-slate-100 dark:bg-white/5 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+                >
+                  Close
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </AnimatePresence>
     </div>
   );
