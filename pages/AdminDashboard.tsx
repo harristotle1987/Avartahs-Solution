@@ -291,6 +291,10 @@ const AdminDashboard: React.FC = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const handleButtonClick = (actionName: string) => {
+    showToast(`${actionName} action triggered`);
+  };
+
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate('/admin/login');
@@ -300,6 +304,7 @@ const AdminDashboard: React.FC = () => {
   }, [navigate]);
 
   const handleStatusChange = async (id: string, status: Lead['status']) => {
+    handleButtonClick("Status update");
     try {
       await updateLeadStatus(id, status);
       showToast("Status Updated");
@@ -310,15 +315,19 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleSaveLead = async () => {
+    handleButtonClick("Lead save");
     if (!editingLead || !editingLead.id) return;
     
     setIsSaving(true);
     try {
       await updateLead(editingLead.id, editingLead);
       showToast("Lead Updated");
+      
+      // Update local state instead of re-fetching
+      setLeads(prev => prev.map(l => l.id === editingLead.id ? { ...l, ...editingLead } as Lead : l));
+      
       setIsEditingLead(false);
       setEditingLead(null);
-      await fetchData();
     } catch (e) {
       showToast("Lead Update Error", "error");
     } finally {
@@ -327,6 +336,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    handleButtonClick("Delete lead");
     setConfirmModal({
       isOpen: true,
       title: 'Confirm Permanent Deletion',
@@ -337,7 +347,8 @@ const AdminDashboard: React.FC = () => {
         try {
           await deleteLead(id);
           showToast("Record Deleted");
-          fetchData();
+          // Update local state
+          setLeads(prev => prev.filter(l => l.id !== id));
         } catch (e) {
           showToast("Deletion Error", "error");
         }
@@ -347,6 +358,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleSaveProject = async () => {
+    handleButtonClick("Project save");
     if (!editingProject) return;
 
     if (!editingProject.title?.trim() || !editingProject.description?.trim()) {
@@ -369,10 +381,19 @@ const AdminDashboard: React.FC = () => {
 
       await saveProject(cleanProject);
       showToast("Project Saved");
+      
+      // Update local state instead of re-fetching
+      setProjects(prev => {
+        const index = prev.findIndex(p => p.id === cleanProject.id);
+        if (index === -1) return [...prev, cleanProject as Project];
+        const next = [...prev];
+        next[index] = cleanProject as Project;
+        return next;
+      });
+
       setIsEditingProject(false);
       setEditingProject(null);
       setTagInput('');
-      await fetchData();
     } catch (e) {
       console.error("Save Error:", e);
       const errorMsg = e instanceof Error ? e.message : "Save Error";
@@ -383,6 +404,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleDeleteProject = async (id: string) => {
+    handleButtonClick("Delete project");
     setConfirmModal({
       isOpen: true,
       title: 'Delete Project Permanently',
@@ -393,7 +415,8 @@ const AdminDashboard: React.FC = () => {
         try {
           await deleteProject(id);
           showToast("Project Deleted");
-          fetchData();
+          // Update local state
+          setProjects(prev => prev.filter(p => p.id !== id));
         } catch (e) {
           showToast("Delete Error", "error");
         }
@@ -402,7 +425,8 @@ const AdminDashboard: React.FC = () => {
     });
   };
 
-  const addMedia = () => {
+  const handleAddMedia = () => {
+    handleButtonClick("Add media");
     if (!newMediaUrl) return;
     
     // YouTube detection
@@ -433,6 +457,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleButtonClick("File upload");
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -484,6 +509,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const removeMedia = (index: number) => {
+    handleButtonClick("Remove media");
     const media = [...(editingProject?.media || [])];
     media.splice(index, 1);
     setEditingProject({ ...editingProject, media });
@@ -943,7 +969,7 @@ const AdminDashboard: React.FC = () => {
                                   className="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold outline-none"
                                   placeholder="Paste media URL..."
                                 />
-                                <button onClick={addMedia} className="p-3 bg-midnight dark:bg-white text-white dark:text-midnight rounded-xl hover:scale-105 transition-transform"><Plus size={18} /></button>
+                                <button onClick={handleAddMedia} className="p-3 bg-midnight dark:bg-white text-white dark:text-midnight rounded-xl hover:scale-105 transition-transform"><Plus size={18} /></button>
                               </div>
                               
                               <div className="relative">
