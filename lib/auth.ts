@@ -1,10 +1,7 @@
-import { sql, isNeonConfigured } from './neon';
+import { apiLogin } from './api';
 
 // Security Protocol: Auth Logic
 // Implementation of session management and credential verification.
-
-// Hardcoded Master Password (Unchangeable except via source code)
-const MASTER_PASSWORD = "Colony082987@";
 
 export const isAuthenticated = (): boolean => {
   try {
@@ -26,27 +23,15 @@ export const isAuthenticated = (): boolean => {
 };
 
 export const login = async (password: string): Promise<boolean> => {
-  // 1. Check against hardcoded master password (Primary)
-  if (password === MASTER_PASSWORD) {
-    createSession();
-    return true;
-  }
-
-  // 2. Check against Neon database if configured (Secondary/Preferred)
-  if (isNeonConfigured) {
-    try {
-      const users = await sql`SELECT * FROM admin_users WHERE email = 'admin@avartah.com' LIMIT 1`;
-      if (users.length > 0) {
-        // In a real app, we would use bcrypt.compare
-        // For this implementation, we check the password_hash field
-        if (users[0].password_hash === password) {
-          createSession();
-          return true;
-        }
-      }
-    } catch (e) {
-      console.error('Neon Auth Error:', e);
+  // Check against server-side auth (Neon or Master Password)
+  try {
+    const success = await apiLogin(password);
+    if (success) {
+      createSession();
+      return true;
     }
+  } catch (e) {
+    console.error('API Auth Error:', e);
   }
 
   return false;

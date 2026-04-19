@@ -1,4 +1,4 @@
-import { sql, isNeonConfigured } from './neon';
+import { initAnalytics, syncAnalytics } from './api';
 import { SiteAnalytics } from '../types';
 
 // Safe ID Generator
@@ -42,12 +42,8 @@ export const analytics = {
   },
 
   async syncInitial() {
-    if (!isNeonConfigured) return;
     try {
-      await sql`
-        INSERT INTO site_analytics (visitor_id, session_start, cta_clicks, form_progress, submitted, exit_page, is_pricing_sensitive)
-        VALUES (${session.visitor_id}, ${session.session_start}, ${JSON.stringify(session.cta_clicks)}, ${session.form_progress}, ${session.submitted}, ${session.exit_page}, false)
-      `;
+      await initAnalytics(session);
     } catch (e) {
       console.warn('Analytics Init Sync Failed', e);
     }
@@ -88,20 +84,8 @@ export const analytics = {
   },
 
   async syncCurrent() {
-    if (!isNeonConfigured) return;
     try {
-      await sql`
-        UPDATE site_analytics 
-        SET 
-          cta_clicks = ${JSON.stringify(session.cta_clicks)}, 
-          form_progress = ${session.form_progress},
-          submitted = ${session.submitted},
-          is_pricing_sensitive = ${session.is_pricing_sensitive},
-          step_durations = ${JSON.stringify(session.step_durations)},
-          whatsapp_handshake = ${session.whatsapp_handshake},
-          calendly_handshake = ${session.calendly_handshake}
-        WHERE visitor_id = ${session.visitor_id}
-      `;
+      await syncAnalytics(session);
     } catch (e) {
       console.warn('Analytics Sync Failed', e);
     }
@@ -113,23 +97,8 @@ export const analytics = {
     session.duration_seconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
     session.exit_page = window.location.pathname;
 
-    if (isNeonConfigured) {
-      // For flush on exit, we use a fire-and-forget approach
-      // Neon's driver uses fetch internally so this should be relatively safe
-      sql`
-        UPDATE site_analytics 
-        SET 
-          duration_seconds = ${session.duration_seconds},
-          exit_page = ${session.exit_page},
-          cta_clicks = ${JSON.stringify(session.cta_clicks)}, 
-          form_progress = ${session.form_progress},
-          submitted = ${session.submitted},
-          is_pricing_sensitive = ${session.is_pricing_sensitive},
-          step_durations = ${JSON.stringify(session.step_durations)},
-          whatsapp_handshake = ${session.whatsapp_handshake},
-          calendly_handshake = ${session.calendly_handshake}
-        WHERE visitor_id = ${session.visitor_id}
-      `.catch(e => console.warn('Analytics Flush Failed', e));
-    }
+    // Use sendBeacon or similar for exit tracking if needed, 
+    // but syncAnalytics is called on transition anyway.
+    syncAnalytics(session).catch(e => console.warn('Analytics Flush Failed', e));
   }
 };

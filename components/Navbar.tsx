@@ -34,29 +34,29 @@ const Navbar: React.FC = () => {
         ? 'py-3 bg-slate-950/95 backdrop-blur-xl border-b border-white/5 shadow-2xl' 
         : 'py-4 md:py-6 bg-slate-950 md:bg-transparent backdrop-blur-md md:backdrop-blur-none'
     }`}>
-      <div className="max-w-[1500px] mx-auto px-6 flex items-center justify-between">
-        <div className="flex items-center gap-3 group cursor-pointer" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
-          <div className="w-8 h-8 rounded-lg bg-sunset flex items-center justify-center text-white font-black text-[10px] shadow-[0_0_15px_rgba(249,115,22,0.4)] group-hover:scale-110 transition-transform">A</div>
-          <span className="text-xl font-black tracking-tighter uppercase text-white group-hover:text-sunset transition-colors">AVARTAH</span>
+      <div className="max-w-[1600px] mx-auto px-10 flex items-center justify-between">
+        <div className="flex items-center gap-5 group cursor-pointer" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
+          <div className="w-9 h-9 rounded-lg bg-sunset flex items-center justify-center text-white font-black text-[12px] shadow-[0_0_15px_rgba(249,115,22,0.4)] group-hover:scale-110 transition-transform">A</div>
+          <span className="text-2xl font-black tracking-tighter uppercase text-white group-hover:text-sunset transition-colors">AVARTAH</span>
         </div>
 
         {/* Desktop Links */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-10 lg:gap-20">
           {navLinks.map((link) => (
             <ScrollLink
               key={link.to}
               to={link.to}
               smooth={true}
               offset={-80}
-              className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 hover:text-white cursor-pointer transition-all"
+              className="text-[11px] lg:text-[13px] font-black uppercase tracking-[0.3em] lg:tracking-[0.5em] text-slate-400 hover:text-white cursor-pointer transition-all px-2 py-1"
             >
               {link.name}
             </ScrollLink>
           ))}
           
-          <div className="w-px h-4 bg-white/10 mx-1" />
+          <div className="w-px h-5 bg-white/10 mx-1 lg:mx-2" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 lg:gap-5">
             <a 
               href={whatsappUrl}
               target="_blank"

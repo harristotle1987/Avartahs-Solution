@@ -15,20 +15,35 @@ const generateUUID = () => {
 /**
  * FETCH: PROJECTS
  */
-export const getProjects = async (): Promise<Project[]> => {
+export const getProjects = async (limit: number = 50, offset: number = 0): Promise<Project[]> => {
   console.log('[Frontend] Fetching projects...');
   try {
-    const response = await fetch('/api/projects');
+    const response = await fetch(`/api/projects?limit=${limit}&offset=${offset}`);
     console.log('[Frontend] Projects response status:', response.status);
     if (response.ok) {
       const data = await response.json();
-      console.log('[Frontend] Projects data:', data);
       return data;
     }
     throw new Error(`Failed to fetch projects: ${response.statusText}`);
   } catch (e) {
     console.error('API Fetch Error (Projects):', e);
     return [];
+  }
+};
+
+/**
+ * FETCH: PROJECT COUNT
+ */
+export const getProjectsCount = async (): Promise<number> => {
+  try {
+    const response = await fetch('/api/projects/count');
+    if (response.ok) {
+      const data = await response.json();
+      return parseInt(data.count) || 0;
+    }
+    return 0;
+  } catch (e) {
+    return 0;
   }
 };
 
@@ -72,11 +87,89 @@ export const deleteProject = async (id: string): Promise<void> => {
 };
 
 /**
+ * AUTH: LOGIN
+ */
+export const apiLogin = async (password: string): Promise<boolean> => {
+  try {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    return response.ok;
+  } catch (e) {
+    console.error('API Auth Error:', e);
+    return false;
+  }
+};
+
+/**
+ * ANALYTICS: INIT
+ */
+export const initAnalytics = async (session: any): Promise<void> => {
+  try {
+    await fetch('/api/analytics/init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(session)
+    });
+  } catch (e) {
+    console.warn('Analytics Init Failed (Backend):', e);
+  }
+};
+
+/**
+ * ANALYTICS: SYNC
+ */
+export const syncAnalytics = async (session: any): Promise<void> => {
+  try {
+    await fetch('/api/analytics/sync', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(session)
+    });
+  } catch (e) {
+    console.warn('Analytics Sync Failed (Backend):', e);
+  }
+};
+
+/**
+ * FETCH: DB HEALTH
+ */
+export const getDbHealth = async (): Promise<{ status: string; error?: string; isIpBlocked?: boolean }> => {
+  try {
+    const response = await fetch('/api/db-health');
+    return await response.json();
+  } catch (e) {
+    return { status: 'error', error: 'Network error' };
+  }
+};
+
+/**
+ * FETCH: ADMIN SUMMARY (Aggregated Stats)
+ */
+export const getAdminSummary = async (): Promise<{ 
+  analytics: { total_visitors: number; avg_duration: number; recent_visitors: number };
+  revenue: number;
+}> => {
+  try {
+    const response = await fetch('/api/admin/summary');
+    if (response.ok) return await response.json();
+    throw new Error('Summary fetch failed');
+  } catch (e) {
+    return { 
+      analytics: { total_visitors: 0, avg_duration: 0, recent_visitors: 0 }, 
+      revenue: 0 
+    };
+  }
+};
+
+/**
  * FETCH: LEADS
  */
-export const getLeads = async (): Promise<Lead[]> => {
+export const getLeads = async (limit: number = 100, offset: number = 0): Promise<Lead[]> => {
   try {
-    const response = await fetch('/api/leads');
+    const response = await fetch(`/api/leads?limit=${limit}&offset=${offset}`);
     if (response.ok) {
       return await response.json();
     }
@@ -88,11 +181,27 @@ export const getLeads = async (): Promise<Lead[]> => {
 };
 
 /**
+ * FETCH: LEADS COUNT
+ */
+export const getLeadsCount = async (): Promise<number> => {
+  try {
+    const response = await fetch('/api/leads/count');
+    if (response.ok) {
+      const data = await response.json();
+      return parseInt(data.count) || 0;
+    }
+    return 0;
+  } catch (e) {
+    return 0;
+  }
+};
+
+/**
  * FETCH: ANALYTICS
  */
-export const getAnalytics = async (): Promise<SiteAnalytics[]> => {
+export const getAnalytics = async (limit: number = 100, offset: number = 0): Promise<SiteAnalytics[]> => {
   try {
-    const response = await fetch('/api/analytics');
+    const response = await fetch(`/api/analytics?limit=${limit}&offset=${offset}`);
     if (response.ok) {
       return await response.json();
     }
@@ -100,6 +209,22 @@ export const getAnalytics = async (): Promise<SiteAnalytics[]> => {
   } catch (e) {
     console.error('API Fetch Error (Analytics):', e);
     return [];
+  }
+};
+
+/**
+ * FETCH: ANALYTICS COUNT
+ */
+export const getAnalyticsCount = async (): Promise<number> => {
+  try {
+    const response = await fetch('/api/analytics/count');
+    if (response.ok) {
+      const data = await response.json();
+      return parseInt(data.count) || 0;
+    }
+    return 0;
+  } catch (e) {
+    return 0;
   }
 };
 

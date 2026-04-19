@@ -134,9 +134,9 @@ const PortfolioCard: React.FC<{ project: Project, index: number }> = ({ project,
           )}
 
           {project.link && (
-            <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 z-20">
-              <a href={project.link} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-midnight shadow-lg border border-slate-100 hover:bg-sunset hover:text-white transition-all transform active:scale-95">
-                <ExternalLink size={16} />
+            <div className="absolute top-8 right-8 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 z-20">
+              <a href={project.link} target="_blank" rel="noopener noreferrer" className="w-11 h-11 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-midnight dark:text-white shadow-2xl border border-slate-100 dark:border-white/5 hover:bg-sunset hover:text-white dark:hover:bg-sunset transition-all transform active:scale-95">
+                <ExternalLink size={18} />
               </a>
             </div>
           )}
