@@ -12,8 +12,7 @@ import {
   initializePaystackTransaction,
   verifyPaystackTransaction,
   verifyPaystackWebhookSignature,
-  validatePaystackModeAndKey,
-  resolvePaystackCallbackUrl,
+  validatePaystackReadiness,
   getPaystackPaymentCurrency,
   isValidPaystackReference
 } from '../lib/paystack.js';
@@ -1511,6 +1510,17 @@ async function verifyAndActivatePaystackPayment(
     };
   }
 
+  const readiness = validatePaystackReadiness();
+  if (!readiness.ready) {
+    console.warn('[Paystack Verify/Activate Blocked]:', readiness.error || 'Paystack not ready');
+    return {
+      ok: false,
+      httpStatus: 503,
+      code: 'PAYMENT_GATEWAY_UNAVAILABLE',
+      error: 'Payment service is currently unavailable. Please try again later.'
+    };
+  }
+
   const cleanRef = rawReference.trim();
   const client = await pool.connect();
 
@@ -2043,36 +2053,29 @@ businessOSRouter.post(
         });
       }
 
-      // Calculate kobo amount and currency strictly on server from DB record and env configuration
-      const amountKobo = Math.round(Number(plan.price_ngn) * 100);
-      const paymentCurrency = getPaystackPaymentCurrency();
-      const reference = `avt_${tenant_id.slice(0, 6)}_${plan_id}_${crypto.randomBytes(8).toString('hex')}`;
-
-      // Check Paystack mode & configuration before creating checkout attempt (fail-closed on mismatch)
-      const paystackCheck = validatePaystackModeAndKey();
-      if (!paystackCheck.valid) {
-        return res.status(503).json({
-          error: process.env.NODE_ENV === 'production'
-            ? 'Payment gateway is not available due to server configuration.'
-            : (paystackCheck.error || 'Paystack is not configured on this server.')
-        });
-      }
-
-      // Resolve authoritative server-side callback URL (PAYSTACK_CALLBACK_URL mandatory in production)
-      let callbackUrl: string;
-      try {
-        callbackUrl = resolvePaystackCallbackUrl({
+      // Enforce central Paystack readiness check (mode, secret key, public key, currency, callback URL)
+      const readiness = validatePaystackReadiness({
+        requireCallbackUrl: true,
+        requestMeta: {
           origin: typeof req.headers.origin === 'string' ? req.headers.origin : undefined,
           host: String(req.headers['x-forwarded-host'] || req.headers.host || ''),
           protocol: String(req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http'))
-        });
-      } catch (cfgErr: any) {
+        }
+      });
+      if (!readiness.ready || !readiness.callbackUrl) {
+        console.warn('[Paystack Initialize Blocked]:', readiness.error || 'Paystack not ready');
         return res.status(503).json({
-          error: process.env.NODE_ENV === 'production'
-            ? 'Payment gateway callback configuration is invalid.'
-            : (cfgErr?.message || 'PAYSTACK_CALLBACK_URL configuration error.')
+          success: false,
+          errorCode: 'PAYMENT_GATEWAY_UNAVAILABLE',
+          error: 'Payment service is currently unavailable. Please try again later.'
         });
       }
+
+      // Calculate kobo amount and currency strictly on server from DB record and env configuration
+      const amountKobo = Math.round(Number(plan.price_ngn) * 100);
+      const paymentCurrency = readiness.currency || getPaystackPaymentCurrency();
+      const reference = `avt_${tenant_id.slice(0, 6)}_${plan_id}_${crypto.randomBytes(8).toString('hex')}`;
+      const callbackUrl = readiness.callbackUrl;
 
       // Record pending payment in database before initiating provider checkout
       const paymentId = `pay_${crypto.randomUUID().slice(0, 10)}`;
@@ -2134,6 +2137,16 @@ businessOSRouter.get(
   '/payments/paystack/callback',
   paymentRateLimit('paystack_callback', 30, 60000),
   async (req: Request, res: Response) => {
+    const readiness = validatePaystackReadiness();
+    if (!readiness.ready) {
+      console.warn('[Paystack Callback Blocked]:', readiness.error || 'Paystack not ready');
+      return res.status(503).json({
+        success: false,
+        errorCode: 'PAYMENT_GATEWAY_UNAVAILABLE',
+        error: 'Payment service is currently unavailable. Please try again later.'
+      });
+    }
+
     const rawRef = req.query.reference || req.query.trxref || req.query.ref;
     const refStr = Array.isArray(rawRef) ? String(rawRef[0] || '') : String(rawRef || '');
 
@@ -2190,6 +2203,16 @@ businessOSRouter.post(
         return res.status(400).json({ error: 'Payment reference is required.' });
       }
 
+      const readiness = validatePaystackReadiness();
+      if (!readiness.ready) {
+        console.warn('[Paystack Verify Blocked]:', readiness.error || 'Paystack not ready');
+        return res.status(503).json({
+          success: false,
+          errorCode: 'PAYMENT_GATEWAY_UNAVAILABLE',
+          error: 'Payment service is currently unavailable. Please try again later.'
+        });
+      }
+
       const outcome = await verifyAndActivatePaystackPayment(reference, {
         source: 'verify',
         requireAuthorizedUser: user
@@ -2218,6 +2241,16 @@ businessOSRouter.post(
 // 30. POST /api/os/payments/paystack/webhook (Separate Cryptographically Signed Paystack Webhook Handler)
 businessOSRouter.post('/payments/paystack/webhook', async (req: Request, res: Response) => {
   try {
+    const readiness = validatePaystackReadiness();
+    if (!readiness.ready) {
+      console.warn('[Paystack Webhook Blocked]:', readiness.error || 'Paystack not ready');
+      return res.status(503).json({
+        success: false,
+        errorCode: 'PAYMENT_GATEWAY_UNAVAILABLE',
+        error: 'Payment webhook processing is currently unavailable.'
+      });
+    }
+
     const signatureHeader = req.headers['x-paystack-signature'];
     const rawBody = Buffer.isBuffer((req as any).rawBody)
       ? (req as any).rawBody

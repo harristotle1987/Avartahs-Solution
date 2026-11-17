@@ -108,19 +108,23 @@ export function validatePaystackModeAndKey(): {
   const isProd = process.env.NODE_ENV === 'production';
   const rawMode = process.env.PAYSTACK_MODE?.trim().toLowerCase();
 
-  if (rawMode && rawMode !== 'test' && rawMode !== 'live') {
+  if (!rawMode) {
+    return {
+      valid: false,
+      error: isProd
+        ? 'PAYSTACK_CONFIGURATION_ERROR: PAYSTACK_MODE ("test" or "live") must be explicitly configured in production.'
+        : 'PAYSTACK_CONFIGURATION_ERROR: PAYSTACK_MODE ("test" or "live") must be explicitly configured.'
+    };
+  }
+
+  if (rawMode !== 'test' && rawMode !== 'live') {
     return {
       valid: false,
       error: 'PAYSTACK_CONFIGURATION_ERROR: Unknown PAYSTACK_MODE. Must be "test" or "live".'
     };
   }
 
-  if (isProd && !rawMode) {
-    return {
-      valid: false,
-      error: 'PAYSTACK_CONFIGURATION_ERROR: PAYSTACK_MODE ("test" or "live") must be explicitly configured in production.'
-    };
-  }
+  const resolvedMode: PaystackMode = rawMode;
 
   const rawKey = process.env.PAYSTACK_SECRET_KEY;
   if (isPlaceholderConfigValue(rawKey)) {
@@ -131,17 +135,17 @@ export function validatePaystackModeAndKey(): {
   }
   const secretKey = rawKey!.trim();
 
-  let resolvedMode: PaystackMode;
-  if (rawMode === 'test' || rawMode === 'live') {
-    resolvedMode = rawMode;
-  } else if (secretKey.startsWith('sk_live_')) {
-    resolvedMode = 'live';
-  } else if (secretKey.startsWith('sk_test_')) {
-    resolvedMode = 'test';
-  } else {
+  if (!secretKey.startsWith('sk_test_') && !secretKey.startsWith('sk_live_')) {
     return {
       valid: false,
       error: 'PAYSTACK_CONFIGURATION_ERROR: PAYSTACK_SECRET_KEY must begin with sk_test_ or sk_live_.'
+    };
+  }
+
+  if (secretKey.length <= 8) {
+    return {
+      valid: false,
+      error: 'PAYSTACK_CONFIGURATION_ERROR: PAYSTACK_SECRET_KEY is incomplete or invalid.'
     };
   }
 
@@ -184,7 +188,7 @@ export function validatePaystackModeAndKey(): {
 
 /**
  * Validates and retrieves the Paystack Secret Key from environment after mode/key verification.
- * Throws in production or when attempting transactions if unconfigured or mismatched.
+ * Throws when mustThrow=true if unconfigured or mismatched.
  */
 export function getPaystackSecretKey(mustThrow: boolean = true): string | null {
   const check = validatePaystackModeAndKey();
@@ -201,7 +205,7 @@ export function getPaystackSecretKey(mustThrow: boolean = true): string | null {
  * Check if Paystack is properly configured and mode-matched in this environment.
  */
 export function isPaystackConfigured(): boolean {
-  return validatePaystackModeAndKey().valid;
+  return validatePaystackReadiness().ready;
 }
 
 /**
@@ -337,19 +341,115 @@ export function resolvePaystackCallbackUrl(requestMeta?: {
   );
 }
 
+export interface PaystackReadinessOptions {
+  requestMeta?: {
+    origin?: string;
+    host?: string;
+    protocol?: string;
+  };
+  requireCallbackUrl?: boolean;
+}
+
+export interface PaystackReadinessResult {
+  ready: boolean;
+  mode?: PaystackMode;
+  callbackUrl?: string;
+  currency: string;
+  code?: 'PAYSTACK_UNCONFIGURED' | 'PAYSTACK_INVALID_CONFIG';
+  error?: string;
+}
+
 /**
- * Startup validation for Paystack configuration. Fails closed in production if
+ * Central non-throwing Paystack readiness check used by payment endpoints and diagnostics.
+ * Validates:
+ * - PAYSTACK_MODE is explicitly "test" or "live"
+ * - PAYSTACK_SECRET_KEY exists, is non-placeholder, and matches PAYSTACK_MODE
+ * - VITE_PAYSTACK_PUBLIC_KEY (if configured) matches PAYSTACK_MODE
+ * - PAYMENT_CURRENCY (if configured) is a valid 3-letter ISO currency code
+ * - PAYSTACK_CALLBACK_URL is valid HTTPS & domain-matched in production (and when required)
+ * Never exposes secret key values in returned diagnostics.
+ */
+export function validatePaystackReadiness(
+  options?: PaystackReadinessOptions
+): PaystackReadinessResult {
+  const keyCheck = validatePaystackModeAndKey();
+  if (!keyCheck.valid || !keyCheck.mode) {
+    const isUnconfigured =
+      !process.env.PAYSTACK_MODE?.trim() ||
+      isPlaceholderConfigValue(process.env.PAYSTACK_SECRET_KEY);
+    return {
+      ready: false,
+      currency: 'NGN',
+      code: isUnconfigured ? 'PAYSTACK_UNCONFIGURED' : 'PAYSTACK_INVALID_CONFIG',
+      error: keyCheck.error || 'PAYSTACK_CONFIGURATION_ERROR: Invalid Paystack configuration.'
+    };
+  }
+
+  const rawCurrency = process.env.PAYMENT_CURRENCY;
+  if (rawCurrency !== undefined && rawCurrency.trim() !== '') {
+    const normalizedCurrency = rawCurrency.trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(normalizedCurrency)) {
+      return {
+        ready: false,
+        mode: keyCheck.mode,
+        currency: 'NGN',
+        code: 'PAYSTACK_INVALID_CONFIG',
+        error: 'PAYSTACK_CONFIGURATION_ERROR: PAYMENT_CURRENCY must be a valid 3-letter ISO currency code.'
+      };
+    }
+  }
+
+  const isProd = process.env.NODE_ENV === 'production';
+  const mustValidateCallback = isProd || Boolean(options?.requireCallbackUrl);
+  const rawCallback = process.env.PAYSTACK_CALLBACK_URL;
+
+  let resolvedCallbackUrl: string | undefined;
+  if (mustValidateCallback) {
+    try {
+      resolvedCallbackUrl = resolvePaystackCallbackUrl(options?.requestMeta);
+    } catch (err: any) {
+      return {
+        ready: false,
+        mode: keyCheck.mode,
+        currency: getPaystackPaymentCurrency(),
+        code: !rawCallback?.trim() && isProd ? 'PAYSTACK_UNCONFIGURED' : 'PAYSTACK_INVALID_CONFIG',
+        error: err?.message || 'PAYSTACK_CONFIGURATION_ERROR: Invalid PAYSTACK_CALLBACK_URL configuration.'
+      };
+    }
+  } else if (rawCallback !== undefined && rawCallback.trim() !== '') {
+    const configured = getConfiguredPaystackCallbackUrl();
+    if (!configured) {
+      return {
+        ready: false,
+        mode: keyCheck.mode,
+        currency: getPaystackPaymentCurrency(),
+        code: 'PAYSTACK_INVALID_CONFIG',
+        error: 'PAYSTACK_CONFIGURATION_ERROR: PAYSTACK_CALLBACK_URL is invalid.'
+      };
+    }
+    resolvedCallbackUrl = configured;
+  }
+
+  return {
+    ready: true,
+    mode: keyCheck.mode,
+    callbackUrl: resolvedCallbackUrl,
+    currency: getPaystackPaymentCurrency()
+  };
+}
+
+/**
+ * Strict Paystack configuration assertion helper. Fails closed if
  * mode/key mismatch, unknown mode, or invalid/missing callback URL exists.
  */
 export function validatePaystackStartupConfig(): { mode: PaystackMode; callbackUrl: string } {
-  const keyCheck = validatePaystackModeAndKey();
-  if (!keyCheck.valid || !keyCheck.mode) {
-    throw new Error(keyCheck.error || 'PAYSTACK_CONFIGURATION_ERROR: Invalid Paystack configuration.');
+  const readiness = validatePaystackReadiness({ requireCallbackUrl: true });
+  if (!readiness.ready || !readiness.mode || !readiness.callbackUrl) {
+    throw new Error(readiness.error || 'PAYSTACK_CONFIGURATION_ERROR: Invalid Paystack configuration.');
   }
-  const callbackUrl = resolvePaystackCallbackUrl();
   return {
-    mode: keyCheck.mode,
-    callbackUrl
+    mode: readiness.mode,
+    callbackUrl: readiness.callbackUrl
   };
 }
 
@@ -360,7 +460,14 @@ export function validatePaystackStartupConfig(): { mode: PaystackMode; callbackU
 export async function initializePaystackTransaction(
   options: PaystackInitializeOptions
 ): Promise<PaystackInitializeResponse> {
-  const secretKey = getPaystackSecretKey(true)!;
+  const readiness = validatePaystackReadiness();
+  const secretKey = readiness.ready ? getPaystackSecretKey(false) : null;
+  if (!readiness.ready || !secretKey) {
+    return {
+      success: false,
+      error: 'Payment service is currently unavailable.'
+    };
+  }
 
   if (!options.email || !options.amountKobo || options.amountKobo <= 0 || !options.reference) {
     return {
@@ -427,7 +534,19 @@ export async function initializePaystackTransaction(
 export async function verifyPaystackTransaction(
   reference: string
 ): Promise<PaystackVerifyResponse> {
-  const secretKey = getPaystackSecretKey(true)!;
+  const readiness = validatePaystackReadiness();
+  const secretKey = readiness.ready ? getPaystackSecretKey(false) : null;
+  if (!readiness.ready || !secretKey) {
+    return {
+      success: false,
+      status: 'unknown',
+      amountKobo: 0,
+      currency: '',
+      reference: typeof reference === 'string' ? reference.trim() : '',
+      transientError: true,
+      error: 'Payment verification service is currently unavailable.'
+    };
+  }
 
   if (!isValidPaystackReference(reference)) {
     return {

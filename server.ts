@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 import { isEmailConfigured, sendEmail, sendPasswordResetEmail, sendWorkspaceInvitationEmail } from './lib/services/email.js';
 import { runDatabaseMigrations } from './lib/migrations.js';
 import { businessOSRouter } from './api/businessOSRouter.js';
-import { validatePaystackModeAndKey, validatePaystackStartupConfig, verifyPaystackWebhookSignature } from './lib/paystack.js';
+import { validatePaystackReadiness, verifyPaystackWebhookSignature } from './lib/paystack.js';
 
 import { BlogsService } from './lib/services/blogs.js';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -566,13 +566,9 @@ app.get('/api/ready', async (req, res) => {
 export async function startServer() {
   const PORT = 3000;
 
-  if (process.env.NODE_ENV === 'production') {
-    validatePaystackStartupConfig();
-  } else if (process.env.PAYSTACK_MODE || process.env.PAYSTACK_SECRET_KEY) {
-    const paystackCheck = validatePaystackModeAndKey();
-    if (!paystackCheck.valid) {
-      console.warn('[Paystack Config Notice]:', paystackCheck.error);
-    }
+  const paystackReadiness = validatePaystackReadiness();
+  if (!paystackReadiness.ready) {
+    console.warn('[Paystack Readiness Notice]: Payment endpoints disabled until configured —', paystackReadiness.error);
   }
 
   if (process.env.DATABASE_URL && process.env.AVARTAH_SKIP_DB_INIT !== '1') {
