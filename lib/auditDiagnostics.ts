@@ -1,5 +1,3 @@
-import { JSDOM, VirtualConsole } from 'jsdom';
-import axe from 'axe-core';
 import { isSafeUrl, resolveAndValidateHost } from './prospects.js';
 
 export interface AuditDiagnosticsResult {
@@ -305,10 +303,17 @@ export async function executeAxeCoreAudit(
     };
   }
 
+  let dom: { window: { document: Document; close: () => void } } | null = null;
   try {
+    const [{ JSDOM, VirtualConsole }, axeModule] = await Promise.all([
+      import('jsdom'),
+      import('axe-core')
+    ]);
+    const axe = (axeModule as any).default || axeModule;
+
     // Virtual console suppresses noise from parsed web content
     const virtualConsole = new VirtualConsole();
-    const dom = new JSDOM(html, {
+    dom = new JSDOM(html, {
       url,
       virtualConsole,
       runScripts: 'outside-only'
@@ -331,7 +336,7 @@ export async function executeAxeCoreAudit(
       ? Math.round((passedRulesCount / totalTested) * 100) 
       : 100;
 
-    const topViolations = rawViolations.slice(0, 5).map(v => ({
+    const topViolations = rawViolations.slice(0, 5).map((v: any) => ({
       id: v.id,
       impact: (v.impact as any) || 'unknown',
       help: v.help,
@@ -355,6 +360,12 @@ export async function executeAxeCoreAudit(
       topViolations: [],
       error: `axe-core analysis error: ${err.message}`
     };
+  } finally {
+    try {
+      dom?.window?.close();
+    } catch {
+      // Ignore cleanup errors on failed JSDOM teardown
+    }
   }
 }
 
