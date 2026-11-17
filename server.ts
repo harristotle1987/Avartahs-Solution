@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
 import bodyParser from 'body-parser';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
@@ -6616,13 +6615,15 @@ Provide the output strictly as a valid JSON array of 3 strings.`;
   // Legacy background worker processProspectsBackground removed: authoritative discovery handles bounded enrichment before bulk persistence.
 
   if (process.env.AVARTAH_TEST_MODE !== '1') {
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
+      const viteModuleName = 'vite';
+      const { createServer: createViteServer } = await import(viteModuleName);
       const vite = await createViteServer({
         server: { middlewareMode: true, hmr: false, ws: false, allowedHosts: true },
         appType: 'spa',
       });
       app.use(vite.middlewares);
-    } else {
+    } else if (process.env.VERCEL !== '1') {
       const distPath = path.join(process.cwd(), 'dist');
       app.use(express.static(distPath));
       app.get('*all', (req, res) => {
