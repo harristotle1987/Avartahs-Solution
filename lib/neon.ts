@@ -19,7 +19,7 @@ const pool = new Pool({
   connectionString: connectionString || '',
   max: 10, // Prevent unbounded connection pools across concurrent serverless instances
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000
+  connectionTimeoutMillis: 10000
 });
 
 pool.on('error', (err: any) => {

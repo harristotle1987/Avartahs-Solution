@@ -614,7 +614,17 @@ export async function startServer() {
       return callback(null, { origin: true, credentials: true });
     }
 
-    // Automatically allow Vercel deployment and preview domains (*.vercel.app)
+    // Explicitly whitelist Vercel production and branch deployment origins adhering to fail-closed policy
+    const explicitWhitelistedOrigins = new Set([
+      'https://avartahs-solution.vercel.app',
+      'https://avartahs-solution-git-main-avartahs-projects.vercel.app'
+    ]);
+
+    if (explicitWhitelistedOrigins.has(origin)) {
+      return callback(null, { origin: true, credentials: true });
+    }
+
+    // Automatically allow Vercel preview domains (*.vercel.app) and request host origin
     try {
       const parsedOrigin = new URL(origin);
       const hostname = parsedOrigin.hostname.toLowerCase();
