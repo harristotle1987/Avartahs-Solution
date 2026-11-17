@@ -614,6 +614,19 @@ export async function startServer() {
       return callback(null, { origin: true, credentials: true });
     }
 
+    // Automatically allow Vercel deployment and preview domains (*.vercel.app)
+    try {
+      const parsedOrigin = new URL(origin);
+      const hostname = parsedOrigin.hostname.toLowerCase();
+      if (hostname === 'vercel.app' || hostname.endsWith('.vercel.app')) {
+        return callback(null, { origin: true, credentials: true });
+      }
+      const requestHost = (req.headers.host || '').split(':')[0].toLowerCase();
+      if (hostname === requestHost) {
+        return callback(null, { origin: true, credentials: true });
+      }
+    } catch {}
+
     console.error(`[CORS Security Alert] Origin ${origin} rejected by fail-closed production policy.`);
     const corsErr: any = new Error('CORS origin denied by production policy');
     corsErr.statusCode = 403;
