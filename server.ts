@@ -493,6 +493,27 @@ app.use((_req, res, next) => {
   next();
 });
 
+let serverBootPromise: Promise<void> | null = null;
+let serverBootDone = false;
+
+// Cold-start barrier: ensure startServer() finishes registering middleware & routes before serving requests
+app.use(async (_req, res, next) => {
+  if (!serverBootDone && serverBootPromise && process.env.AVARTAH_TEST_MODE !== '1') {
+    try {
+      await serverBootPromise;
+    } catch (err: any) {
+      const safeBootMsg = String(err?.message || err || 'Unknown error').replace(/["'{}]/g, '').substring(0, 300);
+      console.error('[Server Cold-Start Error]:', safeBootMsg);
+      return res.status(503).json({
+        success: false,
+        errorCode: 'SERVICE_UNAVAILABLE',
+        error: 'Service initialization failed. Check server configuration.'
+      });
+    }
+  }
+  next();
+});
+
 // Request barrier: ensure database initialization completes before any API request is processed
 app.use(async (req, res, next) => {
   if (!req.path.startsWith('/api') || req.path === '/api/health' || req.path === '/api/ready' || req.path === '/api/db-health') {
@@ -6615,17 +6636,16 @@ Provide the output strictly as a valid JSON array of 3 strings.`;
       });
     }
   }
+  serverBootDone = true;
 }
 
 if (process.env.AVARTAH_TEST_MODE === '1') {
   // Test runner initializes mocked DB / env and calls startServer() explicitly.
-} else if (process.env.VERCEL !== '1') {
-  startServer().catch(err => {
+} else {
+  serverBootPromise = startServer();
+  serverBootPromise.catch(err => {
     console.error('[Backend Fatal Error]:', err);
   });
-} else {
-  // If vercel, we just eagerly configure everything for cold-start
-  startServer().catch(console.error);
 }
 
 export default app;

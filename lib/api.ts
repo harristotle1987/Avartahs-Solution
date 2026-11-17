@@ -1,10 +1,10 @@
 
-import { 
+import type { 
   Lead, SiteAnalytics, Project, Post, Booking, Prospect,
   ClientProject, ProjectMilestone, ProjectDeliverable, ProjectActivity,
   CrmOutreachLog, CrmOutreachSummary, OutreachDeliveryStatus
-} from '../types';
-import { checkSession, ensureCsrfToken, getCsrfToken, setCsrfToken } from './auth';
+} from '../types.js';
+import { checkSession, ensureCsrfToken, getCsrfToken, setCsrfToken } from './auth.js';
 
 const getAuthHeaders = (): Record<string, string> => {
   const headers: Record<string, string> = {

@@ -1,5 +1,5 @@
 import pool from '../neon.js';
-import { Post } from '../../types';
+import type { Post } from '../../types.js';
 
 export class BlogsService {
   static async getAll() {

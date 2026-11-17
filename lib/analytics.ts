@@ -1,5 +1,5 @@
-import { initAnalytics, syncAnalytics } from './api';
-import { SiteAnalytics } from '../types';
+import { initAnalytics, syncAnalytics } from './api.js';
+import type { SiteAnalytics } from '../types.js';
 
 // Safe ID Generator
 const generateUUID = () => {

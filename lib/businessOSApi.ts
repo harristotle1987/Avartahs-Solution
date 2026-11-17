@@ -1,4 +1,4 @@
-import {
+import type {
   Tenant,
   TenantSettings,
   TenantMember,
@@ -9,7 +9,7 @@ import {
   Payment,
   SubscriptionPlan,
   BusinessOSMetrics
-} from '../types';
+} from '../types.js';
 
 const API_BASE = '/api/os';
 

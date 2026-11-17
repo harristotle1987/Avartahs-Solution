@@ -4,7 +4,7 @@
  * Zero fabricated listings, zero invented company names, zero mock data.
  */
 
-import { NormalizedJob, JobProviderResult, JobSearchFilters, computeJobFingerprint, isSafeJobUrl } from '../jobs';
+import { NormalizedJob, JobProviderResult, JobSearchFilters, computeJobFingerprint, isSafeJobUrl } from '../jobs.js';
 
 export interface JobSourceAdapter {
   id: string;
