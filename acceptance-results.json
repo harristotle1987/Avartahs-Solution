@@ -1,0 +1,282 @@
+[
+  {
+    "testNum": 1,
+    "historicalPreRepairFixture": true,
+    "metricIntegrityStatus": "HISTORICAL_PRE_REPAIR_BASELINE",
+    "query": "spas in London",
+    "category": "Salons & Spas",
+    "location": "London, UK",
+    "rawDiscovered": 94,
+    "uniqueBusinesses": 71,
+    "identityVerified": true,
+    "contactVerified": true,
+    "websiteQualified": true,
+    "finalQualified": true,
+    "qualifiedCount": 20,
+    "durationMs": 29828,
+    "shortfallExplanation": "Target achieved (15–20)",
+    "providerQueries": {
+      "overpassQueries": 1,
+      "nominatimQueries": 3,
+      "groundingQueries": 0,
+      "providerFailures": [
+        "Overpass mirror (https://overpass.kumi.systems/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.private.coffee/api/interpreter) timeout"
+      ]
+    },
+    "allHaveDrafts": true
+  },
+  {
+    "testNum": 2,
+    "historicalPreRepairFixture": true,
+    "metricIntegrityStatus": "INCONSISTENT_PRE_REPAIR_BACKFILL",
+    "dataIntegrityNote": "Pre-repair anomaly: rawDiscovered (1) < uniqueBusinesses (20). Caused by legacy Stage 4 Neon DB backfill counting previously stored CRM/prospect rows as new unique/qualified discoveries. Not live evidence or seed data.",
+    "query": "law firms in Lagos",
+    "category": "Law Firms",
+    "location": "Lagos, Nigeria",
+    "rawDiscovered": 1,
+    "uniqueBusinesses": 20,
+    "identityVerified": true,
+    "contactVerified": true,
+    "websiteQualified": true,
+    "finalQualified": true,
+    "qualifiedCount": 20,
+    "durationMs": 18500,
+    "shortfallExplanation": "Target achieved (15–20)",
+    "providerQueries": {
+      "overpassQueries": 1,
+      "nominatimQueries": 8,
+      "groundingQueries": 1,
+      "providerFailures": [
+        "Overpass mirror (https://overpass.kumi.systems/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.private.coffee/api/interpreter) timeout"
+      ]
+    },
+    "allHaveDrafts": true
+  },
+  {
+    "testNum": 3,
+    "historicalPreRepairFixture": true,
+    "metricIntegrityStatus": "HISTORICAL_PRE_REPAIR_BASELINE",
+    "query": "restaurants in Manchester",
+    "category": "Restaurants & Eateries",
+    "location": "Manchester, UK",
+    "rawDiscovered": 134,
+    "uniqueBusinesses": 99,
+    "identityVerified": true,
+    "contactVerified": true,
+    "websiteQualified": true,
+    "finalQualified": true,
+    "qualifiedCount": 18,
+    "durationMs": 49181,
+    "shortfallExplanation": "Target achieved (15–20)",
+    "providerQueries": {
+      "overpassQueries": 1,
+      "nominatimQueries": 5,
+      "groundingQueries": 1,
+      "providerFailures": [
+        "Overpass mirror (https://overpass-api.de/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.kumi.systems/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.private.coffee/api/interpreter) timeout"
+      ]
+    },
+    "allHaveDrafts": true
+  },
+  {
+    "testNum": 4,
+    "historicalPreRepairFixture": true,
+    "metricIntegrityStatus": "HISTORICAL_PRE_REPAIR_BASELINE",
+    "query": "furniture in New York",
+    "category": "Furniture Businesses",
+    "location": "New York, US",
+    "rawDiscovered": 36,
+    "uniqueBusinesses": 24,
+    "identityVerified": true,
+    "contactVerified": true,
+    "websiteQualified": true,
+    "finalQualified": true,
+    "qualifiedCount": 6,
+    "durationMs": 29805,
+    "shortfallExplanation": "Discovered 36 total businesses and 24 unique businesses in New York, United States. Qualified 6 prospects against the target (15–20). Shortfall of 9 was due to: 14 businesses lacking published contact info, 4 businesses already possessing modern functioning websites, and available registry density in this municipality.",
+    "providerQueries": {
+      "overpassQueries": 1,
+      "nominatimQueries": 7,
+      "groundingQueries": 1,
+      "providerFailures": [
+        "Overpass mirror (https://overpass-api.de/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.kumi.systems/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.private.coffee/api/interpreter) timeout"
+      ]
+    },
+    "allHaveDrafts": true
+  },
+  {
+    "testNum": 5,
+    "historicalPreRepairFixture": true,
+    "metricIntegrityStatus": "INCONSISTENT_PRE_REPAIR_BACKFILL",
+    "dataIntegrityNote": "Pre-repair anomaly: rawDiscovered (1) < uniqueBusinesses (2). Caused by legacy Stage 4 Neon DB backfill inflating unique/qualified counts with pre-existing DB records. Not live evidence or seed data.",
+    "query": "dentist in Abuja",
+    "category": "Dental Clinics",
+    "location": "Abuja, Nigeria",
+    "rawDiscovered": 1,
+    "uniqueBusinesses": 2,
+    "identityVerified": true,
+    "contactVerified": true,
+    "websiteQualified": true,
+    "finalQualified": true,
+    "qualifiedCount": 2,
+    "durationMs": 17868,
+    "shortfallExplanation": "Discovered 1 total businesses and 2 unique businesses in Abuja, Municipal Area Council, Federal Capital Territory, 223140, Nigeria. Qualified 2 prospects against the target (15–20). Shortfall of 13 was due to: 0 businesses lacking published contact info, 0 businesses already possessing modern functioning websites, and available registry density in this municipality.",
+    "providerQueries": {
+      "overpassQueries": 1,
+      "nominatimQueries": 3,
+      "groundingQueries": 1,
+      "providerFailures": [
+        "Overpass mirror (https://overpass.kumi.systems/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.private.coffee/api/interpreter) timeout"
+      ]
+    },
+    "allHaveDrafts": true
+  },
+  {
+    "testNum": 6,
+    "historicalPreRepairFixture": true,
+    "metricIntegrityStatus": "HISTORICAL_PRE_REPAIR_BASELINE",
+    "query": "salons in Birmingham",
+    "category": "Beauty Salons",
+    "location": "Birmingham, UK",
+    "rawDiscovered": 65,
+    "uniqueBusinesses": 38,
+    "identityVerified": true,
+    "contactVerified": true,
+    "websiteQualified": true,
+    "finalQualified": true,
+    "qualifiedCount": 6,
+    "durationMs": 33192,
+    "shortfallExplanation": "Discovered 65 total businesses and 38 unique businesses in Birmingham, West Midlands, England, United Kingdom. Qualified 6 prospects against the target (15–20). Shortfall of 9 was due to: 19 businesses lacking published contact info, 13 businesses already possessing modern functioning websites, and available registry density in this municipality.",
+    "providerQueries": {
+      "overpassQueries": 1,
+      "nominatimQueries": 4,
+      "groundingQueries": 1,
+      "providerFailures": [
+        "Overpass mirror (https://overpass-api.de/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.kumi.systems/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.private.coffee/api/interpreter) timeout"
+      ]
+    },
+    "allHaveDrafts": true
+  },
+  {
+    "testNum": 7,
+    "historicalPreRepairFixture": true,
+    "metricIntegrityStatus": "HISTORICAL_PRE_REPAIR_BASELINE",
+    "query": "auto repair in Houston",
+    "category": "Auto Repair",
+    "location": "Houston, US",
+    "rawDiscovered": 66,
+    "uniqueBusinesses": 43,
+    "identityVerified": true,
+    "contactVerified": true,
+    "websiteQualified": true,
+    "finalQualified": true,
+    "qualifiedCount": 9,
+    "durationMs": 32249,
+    "shortfallExplanation": "Discovered 66 total businesses and 43 unique businesses in Houston, Harris County, Texas, United States. Qualified 9 prospects against the target (15–20). Shortfall of 6 was due to: 26 businesses lacking published contact info, 8 businesses already possessing modern functioning websites, and available registry density in this municipality.",
+    "providerQueries": {
+      "overpassQueries": 1,
+      "nominatimQueries": 6,
+      "groundingQueries": 1,
+      "providerFailures": [
+        "Overpass mirror (https://overpass-api.de/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.kumi.systems/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.private.coffee/api/interpreter) timeout"
+      ]
+    },
+    "allHaveDrafts": true
+  },
+  {
+    "testNum": 8,
+    "historicalPreRepairFixture": true,
+    "metricIntegrityStatus": "INCONSISTENT_PRE_REPAIR_BACKFILL",
+    "dataIntegrityNote": "Pre-repair anomaly: rawDiscovered (1) < uniqueBusinesses (19). Caused by legacy Stage 4 Neon DB backfill returning prior DB records inside unique/qualified metrics. Not live evidence or seed data.",
+    "query": "spas in Benin City",
+    "category": "Salons & Spas",
+    "location": "Benin City, Nigeria",
+    "rawDiscovered": 1,
+    "uniqueBusinesses": 19,
+    "identityVerified": true,
+    "contactVerified": true,
+    "websiteQualified": true,
+    "finalQualified": true,
+    "qualifiedCount": 19,
+    "durationMs": 23496,
+    "shortfallExplanation": "Target achieved (15–20)",
+    "providerQueries": {
+      "overpassQueries": 1,
+      "nominatimQueries": 5,
+      "groundingQueries": 1,
+      "providerFailures": [
+        "Overpass mirror (https://overpass-api.de/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.kumi.systems/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.private.coffee/api/interpreter) timeout"
+      ]
+    },
+    "allHaveDrafts": true
+  },
+  {
+    "testNum": 9,
+    "historicalPreRepairFixture": true,
+    "metricIntegrityStatus": "HISTORICAL_PRE_REPAIR_BASELINE",
+    "query": "eateries in Chicago",
+    "category": "Restaurants & Eateries",
+    "location": "Chicago, US",
+    "rawDiscovered": 187,
+    "uniqueBusinesses": 107,
+    "identityVerified": true,
+    "contactVerified": true,
+    "websiteQualified": true,
+    "finalQualified": true,
+    "qualifiedCount": 12,
+    "durationMs": 52649,
+    "shortfallExplanation": "Discovered 187 total businesses and 107 unique businesses in Chicago, South Chicago Township, Cook County, Illinois, United States. Qualified 12 prospects against the target (15–20). Shortfall of 3 was due to: 41 businesses lacking published contact info, 54 businesses already possessing modern functioning websites, and available registry density in this municipality.",
+    "providerQueries": {
+      "overpassQueries": 1,
+      "nominatimQueries": 5,
+      "groundingQueries": 1,
+      "providerFailures": [
+        "Overpass mirror (https://overpass-api.de/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.kumi.systems/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.private.coffee/api/interpreter) timeout"
+      ]
+    },
+    "allHaveDrafts": true
+  },
+  {
+    "testNum": 10,
+    "historicalPreRepairFixture": true,
+    "metricIntegrityStatus": "HISTORICAL_PRE_REPAIR_BASELINE",
+    "query": "law firms in Bristol",
+    "category": "Law Firms",
+    "location": "Bristol, UK",
+    "rawDiscovered": 26,
+    "uniqueBusinesses": 16,
+    "identityVerified": true,
+    "contactVerified": true,
+    "websiteQualified": true,
+    "finalQualified": true,
+    "qualifiedCount": 1,
+    "durationMs": 23997,
+    "shortfallExplanation": "Discovered 26 total businesses and 16 unique businesses in City of Bristol, West of England, England, United Kingdom. Qualified 1 prospects against the target (15–20). Shortfall of 14 was due to: 13 businesses lacking published contact info, 2 businesses already possessing modern functioning websites, and available registry density in this municipality.",
+    "providerQueries": {
+      "overpassQueries": 1,
+      "nominatimQueries": 8,
+      "groundingQueries": 1,
+      "providerFailures": [
+        "Overpass mirror (https://overpass-api.de/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.kumi.systems/api/interpreter) timeout",
+        "Overpass mirror (https://overpass.private.coffee/api/interpreter) timeout"
+      ]
+    },
+    "allHaveDrafts": true
+  }
+]

@@ -1,102 +1,126 @@
-import React, { useState, useEffect } from 'react';
-import { Mail, Linkedin, Twitter, ArrowUpRight, ShieldCheck, Globe, Zap, HardDrive, MessageSquare, Lock } from 'lucide-react';
-import { Link as ScrollLink } from 'react-scroll';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { SectionId } from '../types';
+import { ArrowUpRight } from 'lucide-react';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
-  const [time, setTime] = useState(new Date().toLocaleTimeString());
-
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const navLinks = [
-    { name: 'Audit Entry', to: SectionId.Hero },
-    { name: 'Service Logic', to: SectionId.Services },
-    { name: 'The Pipeline', to: SectionId.Process },
-    { name: 'Secure Booking', to: SectionId.Booking },
+    { name: 'Services', to: `/#${SectionId.Services}` },
+    { name: 'Solutions', to: `/#${SectionId.Solutions}` },
+    { name: 'Our Work', to: `/#${SectionId.Work}` },
+    { name: 'Process', to: `/#${SectionId.Process}` },
+    { name: 'Insights', to: `/#${SectionId.Insights}` },
+    { name: 'Website Audit', to: `/#${SectionId.Audit}` },
+    { name: 'Contact', to: `/#${SectionId.Booking}` },
   ];
 
-  const socialLinks = [
-    { Icon: Twitter, href: "https://twitter.com/harrisonoyeghe", label: "Twitter" },
-    { Icon: Linkedin, href: "https://www.linkedin.com/in/harrison-oyeghe-aaa0001a9", label: "LinkedIn" },
-    { Icon: Mail, href: "mailto:harristotle84@gmail.com", label: "Email" },
-    { Icon: MessageSquare, href: "https://wa.me/2347039723596", label: "WhatsApp" },
+  const workspaceLinks = [
+    { name: 'Service Catalogue', to: '/services' },
+    { name: 'Avartah Business OS', to: '/business-os' },
+    { name: 'Client Delivery Hub', to: '/client/projects' },
+    { name: 'Research & Articles', to: '/blog' },
+    { name: 'Admin Console', to: '/admin/dashboard' },
   ];
 
   return (
-    <footer className="pt-16 md:pt-24 pb-8 px-6 md:px-12 lg:px-24 bg-black border-t border-white/5 overflow-hidden relative font-sans text-slate-400">
-      {/* Background visual element */}
-      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-sunset/50 to-transparent opacity-20" />
-      
-      <div className="max-w-[1450px] mx-auto relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 mb-20">
-          <div className="lg:col-span-7 flex flex-col">
-            <div className="flex items-center gap-3 mb-8">
-              <span className="text-3xl font-[900] tracking-[-0.08em] text-white uppercase">AVARTAH</span>
-              <div className="px-2 py-0.5 bg-sunset/10 border border-sunset/20 rounded text-[8px] font-black text-sunset uppercase tracking-widest">Lab v4.2</div>
+    <footer className="bg-white dark:bg-[#111315] border-t border-slate-200 dark:border-[#30363B] text-slate-600 dark:text-[#A3A9AF] text-xs">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-12 mb-12">
+          {/* Brand & Direct Contact */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-md bg-[#111315] dark:bg-[#171A1D] border border-slate-300 dark:border-[#30363B] flex items-center justify-center text-[#C58A52] font-bold text-sm">
+                A
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="text-sm font-bold tracking-[0.14em] text-slate-900 dark:text-[#F2F1ED]">
+                  AVARTAH
+                </span>
+                <span className="text-[9px] font-medium tracking-[0.26em] text-slate-500 dark:text-[#A3A9AF] uppercase mt-0.5">
+                  SOLUTIONS
+                </span>
+              </div>
             </div>
-            <p className="text-slate-400 text-base sm:text-lg md:text-xl font-medium leading-tight mb-10 max-w-lg">Engineering high-conversion revenue systems through technical precision and behavioral science protocols.</p>
-            <div className="flex flex-wrap gap-3">
-              {socialLinks.map((social, i) => (
-                <a 
-                  key={i} 
-                  href={social.href} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="w-11 h-11 flex items-center justify-center bg-white/5 border border-white/10 rounded-xl text-white hover:bg-sunset hover:border-sunset transition-all shadow-sm group"
+
+            <p className="text-slate-600 dark:text-[#A3A9AF] text-sm leading-relaxed max-w-sm">
+              Custom web platforms, business software, and customer acquisition systems built for sustainable business growth.
+            </p>
+
+            <div className="pt-1 flex flex-col gap-1.5 text-xs text-slate-500 dark:text-[#747C84]">
+              <div>
+                Direct email:{' '}
+                <a
+                  href="mailto:harristotle84@gmail.com"
+                  className="text-slate-900 dark:text-[#F2F1ED] hover:text-[#C58A52] underline underline-offset-4 transition-colors"
                 >
-                  <social.Icon size={16} />
+                  harristotle84@gmail.com
                 </a>
-              ))}
+              </div>
+              <div>
+                <a
+                  href="https://wa.me/2347039723596"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[#C58A52] hover:underline font-medium"
+                >
+                  <span>WhatsApp Direct Desk</span>
+                  <ArrowUpRight size={12} aria-hidden="true" />
+                </a>
+              </div>
             </div>
           </div>
 
-          <div className="lg:col-span-5 border-l-0 lg:border-l border-white/5 pl-0 lg:pl-8">
-            <h4 className="font-black text-[9px] uppercase tracking-[0.4em] text-slate-600 mb-8">Navigation</h4>
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-              {navLinks.map((link, lIdx) => (
-                <li key={lIdx}>
-                  <ScrollLink 
-                    to={link.to} 
-                    smooth={true} 
-                    className="text-slate-400 hover:text-sunset transition-all cursor-pointer text-[10px] font-black uppercase tracking-widest flex items-center justify-between group"
+          {/* Landing Sections */}
+          <div className="lg:col-span-4 space-y-3">
+            <h3 className="text-xs font-semibold text-slate-900 dark:text-[#F2F1ED] tracking-wider uppercase">
+              Navigation
+            </h3>
+            <ul className="grid grid-cols-2 gap-y-2.5 gap-x-4">
+              {navLinks.map((link) => (
+                <li key={link.name}>
+                  <Link
+                    to={link.to}
+                    className="hover:text-slate-900 dark:hover:text-[#F2F1ED] transition-colors"
                   >
-                    {link.name} <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-all text-sunset" />
-                  </ScrollLink>
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Platforms & Portals */}
+          <div className="lg:col-span-3 space-y-3">
+            <h3 className="text-xs font-semibold text-slate-900 dark:text-[#F2F1ED] tracking-wider uppercase">
+              Platforms & Portals
+            </h3>
+            <ul className="space-y-2.5">
+              {workspaceLinks.map((link) => (
+                <li key={link.name}>
+                  <Link
+                    to={link.to}
+                    className="inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-[#F2F1ED] transition-colors"
+                  >
+                    <span>{link.name}</span>
+                    <ArrowUpRight size={12} className="opacity-60" aria-hidden="true" />
+                  </Link>
                 </li>
               ))}
             </ul>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-10 border-y border-white/5 mb-10">
-          {[
-            { icon: <ShieldCheck size={14} className="text-electric" />, label: 'Security', value: 'Lab Encrypted' },
-            { icon: <Zap size={14} className="text-sunset" />, label: 'Speed', value: 'Sub Second Edge' },
-            { icon: <HardDrive size={14} className="text-slate-400" />, label: 'Architecture', value: 'React v19' },
-            { icon: <Globe size={14} className="text-slate-400" />, label: 'Feed', value: time }
-          ].map((item, i) => (
-            <div key={i} className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2">
-                {item.icon}
-                <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">{item.label}</span>
-              </div>
-              <p className="text-[10px] font-black text-white">{item.value}</p>
-            </div>
-          ))}
-        </div>
-        
-        <div className="flex flex-col md:flex-row justify-between items-center text-slate-600 text-[8px] font-black tracking-[0.4em] uppercase gap-6 py-4">
-          <p>© {currentYear} AVARTAH SOLUTIONS. ALL PROTOCOLS RESERVED.</p>
-          <div className="flex items-center gap-10">
-            <Link to="/privacy" className="hover:text-sunset transition-colors">Privacy</Link>
-            <Link to="/terms" className="hover:text-sunset transition-colors">Terms</Link>
-            <Link to="/admin" className="flex items-center gap-1.5 hover:text-sunset transition-colors opacity-40 hover:opacity-100">
-              <Lock size={10} /> Admin
+        {/* Bottom Legal Bar */}
+        <div className="pt-6 border-t border-slate-200 dark:border-[#30363B] flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500 dark:text-[#747C84]">
+          <p>© {currentYear} Avartah Solutions. All rights reserved.</p>
+          <div className="flex items-center gap-6">
+            <Link to="/privacy" className="hover:text-slate-900 dark:hover:text-[#F2F1ED] transition-colors">
+              Privacy Policy
+            </Link>
+            <Link to="/terms" className="hover:text-slate-900 dark:hover:text-[#F2F1ED] transition-colors">
+              Terms of Service
             </Link>
           </div>
         </div>

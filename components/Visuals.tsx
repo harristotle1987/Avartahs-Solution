@@ -23,7 +23,7 @@ export const ServiceCardImage: React.FC<ServiceImageProps> = ({ prompt }) => {
   if (p.includes('audit') || p.includes('data')) assetUrl = ASSET_LIBRARY.audit;
 
   return (
-    <div className="absolute inset-0 w-full h-full overflow-hidden bg-[#0F172A]">
+    <div className="absolute inset-0 w-full h-full overflow-hidden bg-white dark:bg-black  dark:bg-[rgb(15,23,42)]">
       <motion.img 
         initial={{ opacity: 0, scale: 1.05 }}
         animate={{ opacity: 0.5, scale: 1 }}

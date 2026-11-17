@@ -10,8 +10,17 @@ const generateUUID = () => {
   }
 };
 
+const getVisitorId = () => {
+  let vid = localStorage.getItem('avartah_visitor_id');
+  if (!vid) {
+    vid = generateUUID();
+    localStorage.setItem('avartah_visitor_id', vid);
+  }
+  return vid;
+};
+
 let session: SiteAnalytics = {
-  visitor_id: generateUUID(),
+  visitor_id: getVisitorId(),
   session_start: new Date().toISOString(),
   duration_seconds: 0,
   cta_clicks: { hero: 0, footer: 0, navbar: 0 },

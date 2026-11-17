@@ -1,0 +1,106 @@
+--- server.ts
++++ server.ts
+@@ -660,14 +660,14 @@
+ 
+       let aiDraft = '';
+ 
+-      if (!process.env.GEMINI_API_KEY) {
+-        return res.status(500).json({ error: 'GEMINI_API_KEY is not configured in Environment Secrets.' });
+-      }
+-
+-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+-      
+       const fullSystemPrompt = systemPrompt + "\n\nIMPORTANT: You are Harrison Oyeghe, representing Avartah. Generate two distinct versions of the outreach message: one for Email (longer, with a subject line) and one for WhatsApp (shorter, punchy, no subject). Output as valid JSON with keys 'email' and 'whatsapp'. Do not include any other text.";
+       const userPrompt = `Business Name: ${prospect.business_name}\nLocation: ${prospect.location}\nNiche/Industry: Local Business`;
++      let emailDraft = '';
++      let whatsappDraft = '';
++
++      if (process.env.NVIDIA_API_KEY) {
++        // Use NVIDIA AI for intelligent messaging
++        const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++            'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`
++          },
++          body: JSON.stringify({
++            model: "meta/llama-3.1-405b-instruct",
++            messages: [
++              { role: "system", content: fullSystemPrompt },
++              { role: "user", content: userPrompt }
++            ],
++            temperature: 0.7,
++            max_tokens: 1024
++          })
++        });
++        const data = await response.json();
++        const content = data.choices?.[0]?.message?.content || '';
++        try {
++          const parsed = JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
++          emailDraft = parsed.email || '';
++          whatsappDraft = parsed.whatsapp || '';
++        } catch(e) {
++           emailDraft = content;
++        }
++      } else if (process.env.GEMINI_API_KEY) {
++        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+       
+-      const geminiResponse = await ai.models.generateContent({
+-        model: 'gemini-2.5-flash',
+-        contents: userPrompt,
+-        config: {
+-          systemInstruction: fullSystemPrompt,
+-          responseMimeType: 'application/json',
+-          responseSchema: {
+-            type: "object",
+-            properties: {
+-              email: { type: "string", description: "The email draft. Include a 'Subject: ...' line at the very top." },
+-              whatsapp: { type: "string", description: "The WhatsApp draft." }
+-            },
+-            required: ["email", "whatsapp"]
+-          },
+-          temperature: 0.7,
+-        }
+-      });
+-
+-      let emailDraft = '';
+-      let whatsappDraft = '';
+-
+-      const content = geminiResponse.text || '';
+-      try {
+-        const parsed = JSON.parse(content);
+-        emailDraft = parsed.email || '';
+-        whatsappDraft = parsed.whatsapp || '';
+-      } catch (e) {
+-        console.error('Failed to parse AI JSON:', content);
+-        emailDraft = content;
++        const geminiResponse = await ai.models.generateContent({
++          model: 'gemini-2.5-flash',
++          contents: userPrompt,
++          config: {
++            systemInstruction: fullSystemPrompt,
++            responseMimeType: 'application/json',
++            responseSchema: {
++              type: "object",
++              properties: {
++                email: { type: "string", description: "The email draft. Include a 'Subject: ...' line at the very top." },
++                whatsapp: { type: "string", description: "The WhatsApp draft." }
++              },
++              required: ["email", "whatsapp"]
++            },
++            temperature: 0.7,
++          }
++        });
++        const content = geminiResponse.text || '';
++        try {
++          const parsed = JSON.parse(content);
++          emailDraft = parsed.email || '';
++          whatsappDraft = parsed.whatsapp || '';
++        } catch (e) {
++          emailDraft = content;
++        }
++      } else {
++        return res.status(500).json({ error: 'No AI API Key configured.' });
+       }
+ 
+       await sql`

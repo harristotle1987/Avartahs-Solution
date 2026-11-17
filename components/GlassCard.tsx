@@ -1,43 +1,51 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 
 interface GlassCardProps {
   children: React.ReactNode;
   className?: string;
-  hoverGlow?: 'blue' | 'orange' | 'none';
   animateOnHover?: boolean;
+  glowOnHover?: boolean;
+  onClick?: () => void;
 }
 
 const GlassCard: React.FC<GlassCardProps> = ({ 
   children, 
   className = '', 
-  hoverGlow = 'none',
-  animateOnHover = true
+  animateOnHover = true,
+  glowOnHover = true,
+  onClick
 }) => {
-  const glowClasses = {
-    blue: 'hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] hover:border-electric/30',
-    orange: 'hover:shadow-[0_0_30px_-5px_rgba(249,115,22,0.3)] hover:border-sunset/30',
-    none: ''
-  };
-
   return (
     <motion.div
-      whileHover={animateOnHover ? { y: -5, scale: 1.01 } : {}}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      onClick={onClick}
+      whileHover={animateOnHover ? { y: -4 } : undefined}
+      transition={{ type: 'spring', stiffness: 350, damping: 25 }}
       className={`
-        glass-effect 
-        rounded-3xl 
-        p-6 
-        transition-all 
-        duration-500 
-        ${glowClasses[hoverGlow]} 
+        relative overflow-hidden
+        bg-white/70 dark:bg-[#171A1D]/75
+        backdrop-blur-xl backdrop-saturate-150
+        border border-slate-200/80 dark:border-white/10
+        rounded-xl
+        p-6
+        transition-all duration-300
+        ${glowOnHover ? 'hover:border-[#C58A52]/60 hover:shadow-[0_12px_36px_rgba(197,138,82,0.15)]' : ''}
+        ${onClick ? 'cursor-pointer' : ''}
         ${className}
       `}
     >
-      {children}
+      {/* Refraction top sheen highlight */}
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 dark:via-white/20 to-transparent pointer-events-none" />
+      
+      {/* Background radial glow effect */}
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#C58A52]/5 rounded-full blur-2xl pointer-events-none" />
+
+      <div className="relative z-10">
+        {children}
+      </div>
     </motion.div>
   );
 };
 
 export default GlassCard;
+

@@ -1,78 +1,71 @@
-
 import React from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle2, ShieldCheck, Clock } from 'lucide-react';
-import AuditForm from './AuditForm';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Handshake } from 'lucide-react';
 import { analytics } from '../lib/analytics';
-import { AuditReport } from '../lib/gemini';
+import { SectionId } from '../types';
 
 interface FinalCTAProps {
-  onAuditComplete?: (report: AuditReport, url: string) => void;
+  onAuditComplete?: (report: any, url: string) => void;
 }
 
-const FinalCTA: React.FC<FinalCTAProps> = ({ onAuditComplete }) => {
+const FinalCTA: React.FC<FinalCTAProps> = () => {
+  const shouldReduceMotion = useReducedMotion();
+
+  const handleBookScroll = () => {
+    const el = document.getElementById(SectionId.Booking);
+    if (el) {
+      el.scrollIntoView({ behavior: shouldReduceMotion ? 'auto' : 'smooth' });
+    }
+  };
+
   return (
-    <div 
+    <section
       onMouseEnter={() => analytics.logCTAClick('footer')}
-      className="relative py-24 md:py-48 px-6 overflow-hidden bg-[#020617] transition-colors duration-500"
+      className="py-16 lg:py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-[#111315] border-t border-slate-200 dark:border-[#30363B]"
     >
-      {/* Techy Background elements */}
-      <div className="absolute inset-0 cyber-grid opacity-20 pointer-events-none" />
-      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-electric/50 to-transparent opacity-50" />
-      <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
-      
-      {/* Floating Blobs */}
-      <div className="absolute top-1/4 -left-20 w-96 h-96 bg-sunset/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-electric/5 blur-[120px] rounded-full pointer-events-none" />
-
-      <div className="max-w-6xl mx-auto text-center relative z-10">
+      <div className="max-w-7xl mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           viewport={{ once: true }}
-          className="mb-16 md:mb-24"
+          className="p-7 sm:p-10 rounded-xl border border-slate-200 dark:border-[#30363B] bg-slate-50 dark:bg-[#171A1D] flex flex-col lg:flex-row lg:items-center justify-between gap-6"
         >
-          <div className="inline-flex items-center gap-3 px-5 py-2 bg-white/5 border border-white/10 rounded-full mb-8 shadow-sm">
-             <div className="w-2 h-2 bg-sunset rounded-full animate-ping" />
-             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Node Dispatch Active</span>
+          <div className="flex items-start sm:items-center gap-4 sm:gap-5 max-w-2xl">
+            <div className="w-12 h-12 rounded-xl border border-[#C58A52]/40 bg-[#C58A52]/10 flex items-center justify-center shrink-0">
+              <Handshake size={22} className="text-[#C58A52]" aria-hidden="true" />
+            </div>
+            <div className="space-y-1.5">
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-[#F2F1ED]">
+                Ready to move your business forward?
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-[#A3A9AF] leading-relaxed">
+                Let us discuss the web platform, business software, or customer acquisition system your team needs next.
+              </p>
+            </div>
           </div>
-          
-          <h2 className="text-4xl sm:text-5xl md:text-8xl lg:text-[8rem] font-[900] tracking-tighter uppercase text-white mb-8 leading-[0.8]">
-            Final <br/>
-            <span className="text-sunset italic">Deployment</span>
-          </h2>
-          
-          <p className="text-slate-400 text-base sm:text-lg md:text-2xl font-medium mb-12 max-w-2xl mx-auto leading-tight tracking-tight">
-            Deploy your revenue-engineered architecture in exactly 10 business days. Stop the conversion leak today.
-          </p>
-        </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="w-full max-w-5xl mx-auto mb-16"
-        >
-          <div className="relative">
-            <AuditForm onAuditComplete={onAuditComplete} />
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={handleBookScroll}
+              className="min-h-[44px] px-5 py-2.5 bg-[#C58A52] hover:bg-[#D99B62] text-[#111315] font-semibold text-xs rounded-md transition-colors inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C58A52]"
+            >
+              <span>Book a Consultation</span>
+              <ArrowRight size={14} aria-hidden="true" />
+            </button>
+
+            <Link
+              to="/services"
+              className="min-h-[44px] px-5 py-2.5 border border-slate-200 dark:border-[#30363B] hover:border-[#C58A52]/60 text-slate-800 dark:text-[#F2F1ED] font-semibold text-xs rounded-md transition-colors inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C58A52]"
+            >
+              Explore Our Services
+            </Link>
           </div>
         </motion.div>
-
-        <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-40">
-          <div className="flex items-center gap-3 text-white text-[10px] font-black uppercase tracking-[0.2em]">
-            <CheckCircle2 size={16} className="text-sunset" /> 100% Encrypted
-          </div>
-          <div className="flex items-center gap-3 text-white text-[10px] font-black uppercase tracking-[0.2em]">
-            <ShieldCheck size={16} className="text-sunset" /> Secure Protocol
-          </div>
-          <div className="flex items-center gap-3 text-white text-[10px] font-black uppercase tracking-[0.2em]">
-            <Clock size={16} className="text-sunset" /> Rapid Turnaround
-          </div>
-        </div>
       </div>
-    </div>
+    </section>
   );
 };
 

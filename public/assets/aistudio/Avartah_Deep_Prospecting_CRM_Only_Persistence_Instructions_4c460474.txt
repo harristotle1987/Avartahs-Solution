@@ -1,0 +1,315 @@
+AVARTAH SOLUTIONS — PROSPECTING ENGINE: DEEP CONTACT DISCOVERY + CRM-ONLY PERSISTENCE
+GOOGLE AI STUDIO IMPLEMENTATION ADDENDUM
+Baseline project: avartah-solutions (14) (3).zip
+This addendum supersedes any earlier instruction that says to save qualified/discovered prospects automatically.
+
+NON-NEGOTIABLE BUSINESS RULE
+The Prospecting Engine is a temporary research workspace, NOT a database ingestion pipeline.
+Search, discovery, deep contact research, website assessment, qualification, filtering, sorting and review must NOT insert or update prospect records in Neon.
+Only the explicit administrator action "Add to CRM" may persist a selected prospect into the existing authoritative CRM tables.
+If the administrator does not add a result to CRM, its prospect data must not be saved to Neon.
+
+1. PRESERVE THE ROLLBACK BASELINE AND BUILD FIRST
+- Use the exact uploaded rollback ZIP as the source of truth.
+- Do not restore the newer implementation that caused build errors.
+- Run npm ci, npm run typecheck, npm run build and relevant tests before and after edits.
+- Fix actual build errors first. Do not suppress TypeScript errors, remove tests or upgrade dependencies unnecessarily.
+- Preserve the existing React/Vite/Express application, Neon PostgreSQL, authentication, CRM, SaaS Business OS and Paystack.
+- Do not add Firebase, Firestore, Supabase, Redis or a new database.
+- Keep the current visual identity; only improve the Prospecting & Outreach Engine page.
+
+2. CURRENT CODE PATHS TO INSPECT
+In the supplied ZIP:
+- components/ProspectLocator.tsx contains the prospecting page, search action, local results state, deep-scrape action, batch-save action and CRM promotion action.
+- The page calls POST /api/prospects/locate for discovery.
+- The page has a separate deep-scrape action using scrapeProspectContacts.
+- The page has a batch-save action calling POST /api/prospects/batch.
+- server.ts contains POST /api/prospects/locate, POST /api/prospects/search, POST /api/prospects/batch, POST /api/prospects/:id/promote and POST /api/prospects/scrape.
+- The current /api/prospects/locate path writes prospect records and writes rejected/no-contact candidates to prospects_excluded. This is contrary to the new requirement.
+- The legacy /api/prospects/search path also inserts candidates into prospects. It must not remain a second persistence route.
+Trace all callers before changing routes. Do not blindly delete endpoints used elsewhere.
+
+3. CHANGE DISCOVERY TO EPHEMERAL RESULTS
+Refactor discovery so that:
+- /api/prospects/locate performs discovery and enrichment only.
+- It must not INSERT, UPDATE or DELETE prospects, prospects_excluded, CRM leads, or any other persistent business/prospect table.
+- /api/prospects/search must either be deprecated safely or delegate to the same non-persisting discovery service. It must not independently save raw candidates.
+- /api/prospects/batch must no longer be used for automatic discovery persistence. Replace or repurpose it only if the CRM workflow requires an explicit user-confirmed bulk Add to CRM action.
+- Remove automatic writes to prospects_excluded for no-contact or rejected candidates. Keep those records in temporary search results only.
+- Do not create a raw_leads, staging_leads, discovery_results or temporary prospect table in Neon.
+- Do not persist search result payloads, rejected businesses, duplicates, contact lookups, provider responses, website crawl output or search history in Neon.
+- Do not write per-search result snapshots to Neon.
+- Do not silently persist results in another backend, local database, object store or analytics table.
+- Return results to the frontend and hold them in the existing React state for the active page/session. If a multi-request search needs continuation, keep the cursor and accumulated candidate data in the active client session or a bounded server job mechanism that does not persist candidate records in Neon.
+- If the page is refreshed or closed, temporary search results may be lost. This is acceptable and should be clearly communicated; persistence occurs only through Add to CRM.
+- Do not put full contact datasets into localStorage as a workaround. Prefer in-memory React state. sessionStorage may only be considered for a small, short-lived cursor/job token if strictly necessary, not the full prospect dataset.
+
+4. READ-ONLY DUPLICATE CHECKING
+It is acceptable to read existing CRM data to identify duplicates, but discovery must not write to Neon.
+- Use a lightweight read-only matching endpoint or one batched query against existing CRM records.
+- Do not fetch the entire prospects table on every batch.
+- Match using normalized domain, phone, email, and business name + location, with a safe hierarchy.
+- Return only the minimum match status/CRM record identifier needed by the UI.
+- Never create a placeholder CRM record to reserve a discovered business.
+- Do not update existing CRM contact details during discovery.
+- A candidate already in CRM should be marked "Already in CRM" and excluded from new CRM admission unless the administrator explicitly chooses an authorized update workflow.
+
+5. DEEP CONTACT RESEARCH — BUSINESSES WITHOUT WEBSITES
+The target is small businesses with NO official website, not businesses that already have good websites.
+Search for genuine businesses in the selected category and location, then investigate their publicly available contact footprint.
+
+For each candidate:
+A. Establish business identity:
+- Business name and category.
+- Physical location/address and locality.
+- Public phone number, where available.
+- Public business listing/profile URLs.
+- Discovery source and source URL.
+- Evidence that the business is active and genuine.
+
+B. Determine web presence:
+- No official website.
+- Social-media-only presence.
+- Directory/listing-only presence.
+- Broken or unreachable official website.
+- Existing official website (exclude by default).
+Do not mistake a Facebook/Instagram profile, Google Maps listing, directory page or WhatsApp link for an official website.
+
+C. Deep contact discovery:
+When no official website exists, do NOT stop contact research. Search permitted public sources such as:
+- Search engine results/snippets for the exact business name + location + phone/email/contact.
+- Public business directories and chamber/association listings.
+- Public Facebook business pages and public Instagram business profiles, where access is permitted.
+- Public LinkedIn company pages where relevant.
+- Public booking, menu, delivery or marketplace profiles that identify the business.
+- Publicly accessible business registry or professional association pages where relevant.
+- Public map/business listings and their published phone numbers.
+- Public pages linked from the business's own public profiles.
+
+Use query variations carefully, for example:
+- "<business name>" "<city>" email
+- "<business name>" contact
+- "<business name>" phone
+- "<business name>" WhatsApp
+- "<business name>" Facebook
+- "<business name>" Instagram
+- "<business name>" bookings/enquiries
+Do not run every variation against every search provider. Use a staged process and stop when reliable contact information is found or the bounded source budget is exhausted.
+
+D. If a business has an official website:
+- Crawl the homepage and a small set of likely contact pages: /contact, /contact-us, /about, /about-us, /enquiries, /booking.
+- Extract visible public email addresses, mailto links, phone numbers, JSON-LD LocalBusiness data, and public social links.
+- Decode common publicly visible email obfuscation where lawful and technically safe.
+- Do not crawl an unlimited number of pages. Use a small page cap, same-domain restrictions, response-size limits and timeouts.
+
+E. If a business has NO official website:
+- Search public web evidence and public business profiles for a contact email or phone.
+- A phone number found on a public listing may be useful even when no email exists.
+- Do not claim an email was extracted from a website when the business has no website.
+- Do not invent likely emails such as info@domain, bookings@domain or name@gmail.com.
+- Do not treat AI-generated email guesses or domain permutations as found or verified contacts.
+- If no public email can be found, leave email blank and show "Not found".
+- If phone exists but email does not, keep the candidate visible as "Phone available — email not found".
+- If neither phone nor email nor another usable public business contact exists, show it under "Needs contact research" or exclude it from CRM-ready results; do not fabricate contact data.
+
+6. CONTACT EVIDENCE AND VERIFICATION LABELS
+For every email and phone, retain provenance in the temporary result:
+- value
+- source URL/provider
+- source type (official site, public directory, public social profile, public map listing, search result)
+- date/time checked
+- evidence excerpt or location on page, where appropriate
+- status
+
+Use distinct statuses:
+- FOUND: publicly observed on a source.
+- FORMAT_VALID: syntax/number format is valid.
+- SOURCE_CONFIRMED: the source explicitly associates it with the business.
+- INDEPENDENTLY_VERIFIED: validated through a permitted independent verification method.
+Never label an email "verified" solely because an LLM suggested it, a regex found it, or its format is valid.
+Do not perform intrusive SMTP probing. Do not send test emails or WhatsApp messages.
+For WhatsApp, only show a WhatsApp action when a usable phone number exists and the link is correctly formatted; do not claim the account is active unless that has been checked through an approved method.
+
+7. RECOMMENDED GITHUB REPOSITORY — EVALUATE, DO NOT BLINDLY IMPORT
+Primary candidate to inspect:
+https://github.com/frankdotdev/Leadfinder
+
+Its public README describes:
+- OpenStreetMap/Overpass business discovery.
+- Finding businesses with no website, broken websites or social-only profiles.
+- Multi-tier contact/email extraction.
+- Search-engine snippet hunting across DuckDuckGo/DDG Lite/Bing.
+- Public subpage crawling, JSON-LD extraction and Cloudflare email de-obfuscation.
+- Phone, email and social profile extraction.
+- MIT licence is shown by the repository page.
+
+Important caveats:
+- The repository currently shows only a small commit history and limited adoption. Treat it as a research/code-reference candidate, not proven production software.
+- Its README describes generating probable domain email candidates. Do NOT use generated/permuted emails as real contacts or verified emails.
+- It contains optional SMTP auto-outreach. Do NOT import or enable automated sending. Avartah must only prepare drafts and let the administrator send manually.
+- Audit its code, security, provider terms, rate limits, accuracy and dependency footprint before adapting anything.
+- Prefer selectively adapting well-tested extraction techniques into the existing TypeScript/Express backend rather than embedding a second complete application or changing Avartah's stack.
+
+Secondary candidate for business discovery and website email extraction:
+https://github.com/gosom/google-maps-scraper
+
+Its repository page describes a mature Go project with MIT licence, REST API, CLI, web UI, business phone/site data and optional email extraction from business websites. It has a substantially larger public project history and community than Leadfinder.
+However:
+- It primarily extracts email from business websites; it does not solve the no-website contact discovery problem by itself.
+- It requires Go/Docker/browser infrastructure and should not be added directly to the Vercel app without a separate architecture decision.
+- Automated Google Maps collection may conflict with Google's terms. Do not use it unless the data source and collection method are reviewed and approved for the intended use.
+- Do not use proxies or request rotation to bypass access controls or provider limits.
+
+Do not add both repositories wholesale. Compare their relevant modules and choose the smallest defensible set of techniques. Keep Avartah's existing TypeScript/Express architecture and Neon database.
+
+8. RECOMMENDED DISCOVERY/ENRICHMENT ARCHITECTURE
+Use a staged pipeline:
+Stage 1 — Business discovery:
+- Use the existing permitted business discovery sources first.
+- Retrieve business identity, category, location, listing URL, phone and website presence.
+- Use pagination/cursors and deduplicate in memory.
+- Do not persist raw results.
+
+Stage 2 — Website-presence classification:
+- Determine whether the business has an official website.
+- Default target: no official website.
+- Social-only and directory-only presence count as no official website.
+- Exclude good official websites by default.
+- Do not assume a missing website field proves no website; perform a bounded verification/search.
+
+Stage 3 — Contact research:
+- For no-website businesses, use a limited set of public search and directory sources to find public phone/email/social contact evidence.
+- For businesses with a website, crawl only a small set of same-domain public pages.
+- Run enrichment only for candidates that passed identity and website-opportunity checks.
+- Do not repeat the same search queries or crawl the same URLs within the same job.
+
+Stage 4 — Qualification:
+- Require genuine business evidence.
+- Prioritise no-website businesses.
+- Score contact completeness and website opportunity separately.
+- Show the source and confidence for each contact.
+- Do not lower standards to force a target count.
+
+Stage 5 — Temporary result review:
+- Return enriched candidates to the Prospecting page.
+- Keep candidates, evidence, scores and filters in client memory for the active session.
+- Allow sort, filter, inspect, export and select without database writes.
+- Clearly show "Temporary search results — not saved to CRM".
+- Provide an explicit Add to CRM action for each result and a bulk Add Selected to CRM action.
+
+Stage 6 — Explicit CRM persistence:
+- Only when the administrator clicks Add to CRM (or confirms Add Selected) may the backend persist records.
+- Submit only the selected candidate records to a protected admin endpoint.
+- Validate and normalize all fields server-side.
+- Recheck duplicates immediately before insert.
+- Insert into the existing authoritative CRM/prospects data model in a transaction.
+- Do not create a separate prospect staging table.
+- Use idempotency/unique constraints so double-clicks and retries do not create duplicates.
+- Return per-record results: added, already exists, rejected/invalid, failed.
+- Never save unselected candidates or rejected candidates.
+- Do not automatically promote every discovered candidate.
+
+9. ADAPT THE EXISTING CRM PROMOTION FLOW
+The current UI's promotion flow may assume a prospect already has a Neon row ID, and the current server promotion route may SELECT the prospect by ID before promotion.
+That assumption must change because pre-CRM candidates are ephemeral.
+- Inspect the exact current implementation of /api/prospects/:id/promote and all callers.
+- Introduce or adapt a protected endpoint that accepts a validated temporary candidate payload and performs the explicit Add to CRM operation.
+- The browser must not be trusted to set CRM status, owner, tenant, qualification approval or privileged fields.
+- Generate the persistent ID on the server only when the administrator confirms Add to CRM.
+- Insert the prospect/CRM record using existing schema and business rules.
+- If adding a CRM lead and a prospect record requires two writes, perform them atomically in one transaction.
+- Preserve existing CRM relationships, activity logging and tenant/admin authorization.
+- If a candidate already exists, return its existing record and do not create another one.
+- Do not require a prior discovery-time database insert just to make the Add to CRM button work.
+
+10. NEON STORAGE AND QUERY BUDGET
+Discovery must perform zero INSERT/UPDATE/DELETE operations against prospect/CRM tables.
+Allowed database activity during discovery:
+- Read-only, batched duplicate matching against existing CRM records, if needed.
+- Read-only admin authorization.
+No candidate persistence, no excluded table writes, no search-history writes, no per-candidate progress writes.
+At Add to CRM:
+- Insert only selected records.
+- Use a single transaction for selected records where practical.
+- Batch duplicate checks and inserts.
+- Do not overwrite existing non-empty CRM fields with empty or lower-confidence data.
+- Do not store raw page HTML, screenshots, full provider payloads or repeated crawl logs.
+- Do not add a new database table for temporary results.
+Measure and report database writes during a discovery-only run: expected prospect/CRM writes = ZERO.
+
+11. PROVIDER RATE LIMITS, COST AND RESPONSIBLE ACCESS
+- Use a primary provider first; use fallback only when necessary.
+- Set low bounded concurrency (initially 2–3).
+- Cache query/geocoding results in memory for the active job.
+- Avoid repeated Nominatim/Overpass requests and respect their public usage policies.
+- Respect search-provider terms, robots/access restrictions and rate limits.
+- Use bounded timeouts, Retry-After, exponential backoff and circuit breakers.
+- Do not use rotating proxies, browser fingerprint tricks or mirror rotation to evade limits or blocks.
+- Do not scrape login-only, private, paywalled or access-controlled data.
+- Do not bypass CAPTCHAs or access controls.
+- Apply same-domain restrictions and SSRF protections to all website crawling.
+- Never run unlimited concurrent crawls.
+
+12. SEARCH TARGET AND STOP CONDITIONS
+- Default qualified target: 20.
+- Continue through additional bounded batches until 20 qualified businesses are available, sources are exhausted, the candidate budget is reached, the administrator stops, or provider limits prevent continuation.
+- Initial raw candidate ceiling: 500 per search.
+- Do not increase request volume merely to hit 20.
+- Count only unique businesses with genuine public contact evidence and a real website opportunity as qualified.
+- Keep separate totals: raw found, unique, no official website, public phone found, public email found, contact-qualified, already in CRM, excluded, and provider errors.
+- Do not persist these counters in Neon. Keep them in current job/session state.
+
+13. UI CHANGES
+Update only the Prospecting & Outreach Engine page:
+- Search by niche/category and location.
+- Default target: small businesses without an official website.
+- Include social-only businesses.
+- Exclude good official websites by default.
+- Show deep research progress and sources checked.
+- Show email and phone separately with evidence/status.
+- Show "No public email found" honestly.
+- Show phone-only prospects separately from email-qualified prospects.
+- Show a clear "Temporary — Not Saved" state on every discovered result.
+- Add individual Add to CRM and bulk Add Selected to CRM actions.
+- Add "Already in CRM" duplicate state.
+- Add "Export temporary results" if useful, without writing to Neon.
+- Provide clear notice that refreshing/closing the page may discard temporary results unless the administrator has added them to CRM.
+- Never automatically save all search results.
+- Never automatically send email or WhatsApp messages.
+- Preserve the existing Avartah dark/bronze brand and responsive behavior.
+
+14. REQUIRED TESTS
+Prove all of the following:
+1. Discovery endpoint performs no prospect/CRM INSERT, UPDATE or DELETE.
+2. No-contact and rejected candidates are not written to prospects_excluded.
+3. Search results are returned to the frontend and displayed without a database record.
+4. A candidate can be deep-enriched without a Neon insert.
+5. Refreshing/closing the page does not imply the candidate was saved.
+6. Read-only duplicate checks do not mutate CRM records.
+7. Clicking Add to CRM creates exactly one persistent CRM record.
+8. Bulk Add Selected persists only selected candidates.
+9. Double-click/retry does not create duplicates.
+10. Existing CRM values are not overwritten with blank or lower-confidence fields.
+11. Legacy /api/prospects/search cannot write discovery candidates.
+12. No automated email/WhatsApp is sent.
+13. Provider limits, timeouts and backoff are respected.
+14. SSRF protections remain active.
+15. npm run typecheck and npm run build pass.
+16. Relevant tests pass using a dedicated test database or mocked providers.
+
+Instrument a discovery-only test and show SQL/write counts. Expected writes to prospects, prospects_excluded and CRM lead tables: ZERO.
+
+15. FINAL DELIVERY
+Return:
+- Complete corrected project ZIP.
+- Exact files changed.
+- Exact GitHub repository and modules evaluated.
+- Why selected extraction logic was adopted or rejected.
+- Confirmation that no raw discovery records are persisted.
+- Evidence that discovery-only runs perform zero Neon prospect/CRM writes.
+- Evidence that Add to CRM persists only selected candidates.
+- Actual typecheck/build/test results.
+- Any remaining limitations.
+
+FINAL ACCEPTANCE RULE
+The prospecting engine must discover and deeply research small businesses without official websites, collect only publicly available and evidence-backed contact details, show all results temporarily for review, and write nothing to Neon until the administrator explicitly clicks Add to CRM.

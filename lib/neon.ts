@@ -1,13 +1,44 @@
+import { Pool } from '@neondatabase/serverless';
+import dotenv from 'dotenv';
 
-import { neon } from '@neondatabase/serverless';
+dotenv.config();
 
-// Neon Serverless Connection
-// Using the connection string provided by the user
-const connectionString = (typeof process !== 'undefined' ? process.env.DATABASE_URL : '') || 'postgresql://neondb_owner:npg_Tqp0ojdvy4ZP@ep-wandering-salad-anmmi2ea-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const connectionString = process.env.DATABASE_URL;
 
-export const sql = neon(connectionString);
+if (!connectionString) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[FATAL CONFIGURATION]: DATABASE_URL is not defined in production environment.');
+    throw new Error('FATAL CONFIGURATION: DATABASE_URL is missing in production environment.');
+  } else {
+    console.warn('[WARNING]: DATABASE_URL is not defined. Database operations will fail unless configured.');
+  }
+}
 
-/**
- * Database Status Check
- */
-export const isNeonConfigured = !!connectionString && connectionString.includes('neon.tech');
+// Bounded Neon Serverless connection pool configured for Vercel/Node execution boundaries
+const pool = new Pool({
+  connectionString: connectionString || '',
+  max: 10, // Prevent unbounded connection pools across concurrent serverless instances
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000
+});
+
+pool.on('error', (err: any) => {
+  console.warn('[Neon Pool Notice]: Idle client warning:', err?.message || err);
+});
+
+export const query = async (text: string, params?: any[]) => {
+  return await pool.query(text, params);
+};
+
+export const checkNeonConnection = async (): Promise<boolean> => {
+  try {
+    if (!connectionString) return false;
+    const res = await pool.query('SELECT 1 as connected');
+    return res.rows[0]?.connected === 1;
+  } catch (err) {
+    console.error('[Neon Connection Check Failed]:', err);
+    return false;
+  }
+};
+
+export default pool;

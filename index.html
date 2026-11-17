@@ -3,14 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avartah Solutions | Engineered Revenue Systems</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23020617'/%3E%3Cpath d='M30 70 L50 25 L70 70 M38 55 L62 55' stroke='%23F97316' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3Ccircle cx='70' cy='30' r='8' fill='%233B82F6'/%3E%3C/svg%3E">
+    <meta name="theme-color" content="#111315">
+    <link rel="manifest" href="/manifest.json">
+    <title>Avartah Solutions | Engineered Revenue Systems & Digital Consultancy</title>
+    <meta name="description" content="Avartah Solutions delivers engineered revenue systems, custom software, high-conversion web platforms, and automated prospect intelligence for growth-minded enterprises.">
+    <meta property="og:title" content="Avartah Solutions | Engineered Revenue Systems & Digital Consultancy">
+    <meta property="og:description" content="Avartah Solutions delivers engineered revenue systems, custom software, high-conversion web platforms, and automated prospect intelligence.">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23111315'/%3E%3Cpath d='M30 72 L50 24 L70 72 M38 56 L62 56' stroke='%23C58A52' stroke-width='7' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="globals.css">
     <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('avartah-theme');
+          if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
       // Shim process.env for browser compatibility
       window.process = window.process || { env: {} };
       
@@ -19,46 +34,47 @@
         theme: {
           extend: {
             colors: {
-              midnight: '#0F172A',
-              electric: '#3B82F6',
-              sunset: '#F97316',
-              offwhite: '#F8FAFC',
-              background: '#F8FAFC',
-              foreground: '#0F172A',
-              muted: '#64748B',
-              border: '#E2E8F0',
+              obsidian: {
+                bg: '#111315',
+                secondary: '#171A1D',
+                surface: '#202428',
+                primary: '#F2F1ED',
+                muted: '#747C84',
+                secondaryText: '#A3A9AF',
+                border: '#30363B',
+                bronze: '#C58A52',
+                'bronze-hover': '#D99B62',
+                'bronze-muted': 'rgba(197, 138, 82, 0.12)',
+                success: '#1E7F55',
+                warning: '#D97706',
+                error: '#DC2626',
+              },
             },
             fontFamily: {
-              sans: ['Inter', 'sans-serif'],
+              sans: ['Plus Jakarta Sans', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
               mono: ['JetBrains Mono', 'monospace'],
+              editorial: ['Playfair Display', 'Georgia', 'serif'],
             },
-            boxShadow: {
-              'lab': '0 20px 50px -12px rgba(15, 23, 42, 0.08)',
-              'lab-inner': 'inset 0 2px 4px 0 rgba(15, 23, 42, 0.05)',
+            borderRadius: {
+              'DEFAULT': '8px',
+              'md': '8px',
+              'lg': '10px',
+              'xl': '12px',
             }
           }
         }
       }
     </script>
-<script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react-dom": "https://esm.sh/react-dom@^19.2.3",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
-    "framer-motion": "https://esm.sh/framer-motion@^12.23.26",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "@emailjs/browser": "https://esm.sh/@emailjs/browser@^4.4.1",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-    "react-scroll": "https://esm.sh/react-scroll@^1.9.3"
-  }
-}
-</script>
 </head>
-<body class="bg-[#F8FAFC] text-[#0F172A] antialiased selection:bg-sunset/10 selection:text-sunset">
+<body class="bg-[#F8FAFC] dark:bg-[#111315] text-[#111315] dark:text-[#F2F1ED] antialiased overflow-x-hidden selection:bg-[#C58A52]/20 selection:text-[#C58A52] transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
 </body>
 </html>

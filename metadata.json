@@ -1,5 +1,6 @@
 {
   "name": "Avartah Solutions",
-  "description": "Premium agency platform specializing in logic-driven UI/UX and high-performance revenue architecture for scaling businesses.",
-  "requestFramePermissions": []
+  "description": "Premium business intelligence and outreach platform. Features deep scraping for contact discovery, AI-powered outreach generation, and lead management with email/WhatsApp automation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

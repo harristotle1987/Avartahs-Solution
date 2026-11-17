@@ -1,0 +1,229 @@
+AVARTAH SOLUTIONS — ROLLBACK-BASELINE REPAIR & PROSPECTING ENGINE INSTRUCTIONS
+For Google AI Studio | Source archive: avartah-solutions (14) (3).zip
+
+PURPOSE
+Use the uploaded ZIP as the authoritative rollback baseline. The newer implementation was reverted because it caused deployment/build errors. Do not reintroduce that broken implementation. First establish a clean, reproducible build from this exact archive. Then make the targeted Prospecting & Outreach Engine improvements below, with low Neon PostgreSQL usage and controlled provider consumption.
+
+IMPORTANT EXECUTION ORDER
+1. Inspect the complete project and establish the current build state.
+2. Fix only confirmed build/type/runtime blockers.
+3. Run the build and typecheck successfully.
+4. Implement the prospecting backend changes.
+5. Implement the required prospecting page UI improvements.
+6. Re-run all checks and return the complete corrected ZIP plus a factual report.
+
+A. PROTECT THE ROLLBACK BASELINE
+- Treat this uploaded archive as the source of truth.
+- Do not restore code from the failed newer version.
+- Do not replace the application, framework, routing architecture, authentication system or database.
+- Preserve existing working pages, SaaS Business OS, CRM, prospecting functions, authentication, Paystack and deployment configuration unless a confirmed defect requires a narrowly scoped correction.
+- Do not introduce Firebase, Firestore, Supabase, Redis or another database. Neon PostgreSQL remains the database.
+- Do not make broad refactors, mass formatting changes or dependency upgrades.
+- Before editing, map the files and functions involved in the prospecting page, its API routes, Neon persistence and build pipeline.
+
+B. BUILD FAILURE — DIAGNOSE BEFORE CHANGING CODE
+The archive's package.json defines:
+- build: vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs
+- typecheck/lint: tsc --noEmit
+- test: tsx test-step10c-suite.ts && tsx test/paystack_security.test.ts
+
+The archive has vite.config.ts, tsconfig.json, package-lock.json and vercel.json. A build/typecheck could not be independently completed in this audit environment because npm dependency installation timed out; therefore, do not assume a specific compiler error or claim that the archive currently builds or fails until you execute it in the project environment.
+
+Required build repair procedure:
+1. Use the exact package-lock.json with npm ci. Do not delete the lockfile or switch package managers.
+2. Capture the complete output of npm ci, npm run typecheck and npm run build.
+3. Fix the FIRST real error in each failing command, then rerun. Do not suppress errors with broad `any`, `@ts-ignore`, disabled strict mode, `skipLibCheck` changes, `|| true`, or removal of tests.
+4. Check missing imports, incorrect relative paths/extensions, export/import mismatches, JSX/type errors, Node-versus-browser module usage, ESM/CJS incompatibilities, Vite entry/output configuration and esbuild server bundling.
+5. Check that every local import resolves to the correct existing source file. Do not create duplicate placeholder modules merely to silence an import error.
+6. Check that server-only modules (Neon, secrets, filesystem/network utilities, Paystack secret operations) are not imported into browser bundles.
+7. Check that Vercel's configured build output and server entry point match the actual build artifacts. Preserve the existing deployment architecture unless logs prove it is incorrect.
+8. Do not change dependency versions unless the actual error proves a dependency incompatibility. If a dependency change is unavoidable, update package.json and package-lock.json together using npm, and explain why.
+9. Run `npm run typecheck`, `npm run build`, and the relevant tests after every repair.
+10. Return the exact failing command, original error, changed file(s), correction and final command output. Never report PASS unless the command completed successfully.
+
+C. FIX THE AUTHORITATIVE DISCOVERY ROUTE
+The current UI calls POST `/api/prospects/locate` from components/ProspectLocator.tsx. Keep this as the primary discovery contract unless code inspection proves the route has changed.
+- Trace the request from ProspectLocator.tsx through server.ts and back to the UI.
+- Preserve the existing request/response contract or update both ends together with backward compatibility.
+- Validate query, category, location, target count and filters server-side.
+- Enforce a qualified target default of 20, with a permitted configurable range of 15–20 for this workflow. Do not let a browser request silently raise it to 100.
+- Return a consistent JSON response for success, partial success, provider failure, rate limiting and validation errors.
+- Do not return HTML, empty bodies or malformed JSON to the frontend.
+- Distinguish a completed search with zero qualified prospects from an invalid provider response or failed search.
+
+D. CONTINUOUS DISCOVERY — BOUNDED, NOT INFINITE
+Implement automatic continuation across provider pages/batches:
+- Process candidates in controlled batches (initially 50 raw candidates where the source supports it).
+- Qualify candidates before requesting another batch.
+- Stop immediately when 20 genuinely qualified prospects are reached.
+- Continue while fewer than 20 are qualified and useful source pages/cursors remain.
+- Stop when sources are exhausted, a hard candidate/request/time budget is reached, all providers are unavailable, or the administrator stops the job.
+- Initial safety limits: maximum 500 raw candidates per search job; maximum 20 qualified prospects; provider concurrency 2–3; a bounded total job duration compatible with the deployment platform.
+- Make limits configurable server-side, not freely controlled by the browser.
+- Do not pretend that repeating the same query or re-reading the same first page is pagination. Use provider cursors, offsets or distinct bounded query variations where supported.
+- Keep continuation resumable only if the existing deployment architecture can safely support it. Do not rely on an in-memory process surviving a Vercel serverless invocation.
+- If background continuation is needed, use the project's existing supported job/cron mechanism. Do not introduce an always-running worker or a new infrastructure dependency without approval.
+- Progress/status requests must never start another discovery operation.
+
+E. REDUCE PROVIDER RATE-LIMIT PRESSURE
+Audit the existing provider calls in server.ts, including Nominatim, Overpass mirrors, Gemini Google Search/grounding, NVIDIA and LocationIQ.
+- Use one primary source first and call a fallback only when needed.
+- Do not launch every provider and every query variation in parallel.
+- Respect each provider's published usage limits and attribution requirements.
+- Nominatim is a particularly sensitive case: do not issue rapid multi-query bursts. Apply a shared per-provider throttle, conservative request spacing, caching and backoff. Do not use it as a high-volume bulk scraping endpoint.
+- Do not rotate through Overpass mirrors rapidly as a way to bypass rate limits. Use a small controlled fallback policy, bounded timeouts and cooldowns.
+- Avoid the current pattern of trying several Overpass mirrors sequentially on every search when one provider is temporarily slow. Record provider health/cooldown and use fallback only when justified.
+- Use AbortSignal timeouts for all outbound requests, including the legacy LocationIQ/Nominatim search route and NVIDIA requests.
+- Handle HTTP 429 using Retry-After when present, otherwise bounded exponential backoff with jitter. Do not sleep one second and immediately repeat an exhausted quota request.
+- Limit retries; do not retry permanent 4xx errors.
+- Avoid duplicate Google/Gemini grounding calls. Do not execute a second grounding search merely because the first result count is below 15 if the provider has already returned no additional evidence or a quota error.
+- Cache geocoding and query-expansion results with a reasonable TTL. Reuse cached results for identical normalized category/location searches.
+- Keep provider API keys server-side. Never return them to the browser or log them.
+
+F. REMOVE UNNECESSARY NEON WRITES — CRITICAL
+The current `/api/prospects/locate` evaluation path writes each qualified prospect to Neon individually and also writes rejected/no-contact candidates to `prospects_excluded`. These writes must be redesigned.
+- Keep raw provider results, per-batch deduplication sets, website assessment results and rejected candidates in memory for the active bounded job wherever possible.
+- Do not permanently store every raw discovery result.
+- Do not insert every candidate with missing contacts into `prospects_excluded`.
+- Do not persist every duplicate, provider retry, website crawl, failed lookup or per-candidate progress update.
+- Do not store full provider payloads or website HTML.
+- Compare normalized candidate keys against Neon in batched lookups, not one SELECT per candidate.
+- After qualification, bulk insert qualified candidates in one parameterized batch or a small number of bounded batches inside a transaction.
+- Await and handle the database write result. Do not fire-and-forget `pool.query(...).catch(...)` and then return success before persistence is confirmed.
+- Use stable identity keys and database uniqueness constraints to prevent repeated search runs from inserting duplicate businesses. A random UUID per discovery is not a deduplication strategy.
+- Prefer a canonical key built from normalized domain, normalized phone, and normalized business name plus location, using a safe matching hierarchy. Do not use business name alone where it can collide.
+- On conflict, preserve existing authoritative CRM values. Update only missing or demonstrably fresher fields; never overwrite good existing data with null/empty/unverified data.
+- Persist only genuinely qualified prospects that pass the contact and website opportunity gates. CRM promotion must remain an explicit administrator action if that is the existing workflow.
+- Persist only a compact search-job summary if required: job ID, category/location, timestamps, candidate count, qualified count, duplicate count, excluded counts, provider error counts and terminal status.
+- If a temporary staging table is technically unavoidable, justify it, impose a short retention period and clean it automatically. Do not create one by default.
+- Do not add unnecessary migrations. Inspect existing prospects schema and indexes before changing them.
+
+G. FIX THE LEGACY `/api/prospects/search` ROUTE
+The archive also contains POST `/api/prospects/search`, a separate older path that:
+- expands queries through NVIDIA,
+- starts multiple LocationIQ/Nominatim requests in parallel,
+- classifies websites one by one,
+- inserts each candidate into Neon with a new random UUID,
+- then starts background enrichment.
+This can multiply provider calls and Neon writes and can create duplicate business rows.
+Required:
+- Determine whether any current page or workflow still calls this route.
+- If unused, deprecate it safely or make it delegate to the same authoritative discovery/qualification service. Do not delete it until all callers are checked.
+- If still used, apply the same rate limits, bounded concurrency, deduplication, qualification-before-persistence and bulk-write rules.
+- Do not run both discovery routes for the same user action.
+- Do not leave two competing prospect-ingestion pipelines.
+
+H. FIX METRIC AND RESULT INTEGRITY
+- Do not count historical CRM rows as newly discovered prospects.
+- Do not include duplicates in the newly qualified count.
+- Keep separate metrics for raw candidates, unique candidates, website opportunities, contact-qualified candidates, qualified prospects, duplicates, existing CRM matches, excluded good websites and missing-contact candidates.
+- A CRM record reused for display must be marked as an existing record and excluded from the current search's new-discovery total.
+- Do not label a phone/email as independently verified merely because it was found or passed format validation. Use accurate labels such as found, format-valid, source-confirmed or independently verified.
+- A WhatsApp link must not be described as verified unless the link/contact was actually validated.
+- Do not invent or inflate candidate counts, qualification counts, source-query counts or success claims.
+- Inspect acceptance-results.json. Treat its numbers as historical test evidence only, not live data or proof of current implementation. In particular, investigate inconsistent entries where rawDiscovered is lower than uniqueBusinesses before using this file in any report. Correct or clearly label stale/inconsistent fixtures; do not use them to seed production data.
+
+I. WEBSITE AND CONTACT QUALIFICATION
+Preserve the existing Avartah targeting rules:
+- No website: opportunity.
+- Broken website: opportunity only after a safe, bounded availability check.
+- Outdated/weak website: opportunity only when supported by evidence.
+- Good modern website: exclude by default.
+- Social-media-only presence: possible opportunity; do not treat social media as a standalone website.
+- At least one usable public contact channel is required for the qualified list.
+- Distinguish phone/email found from independently verified.
+- Do not use SMTP mailbox probing or claim deliverability without evidence.
+- Do not fabricate missing phone numbers, emails, addresses, website URLs or business identities.
+- Preserve source provenance and the date checked for each qualified prospect.
+- Keep SSRF protections when inspecting websites: block loopback/private/link-local/reserved IP ranges, validate DNS and every redirect destination, restrict protocols, enforce response-size and timeout limits, and do not fetch arbitrary non-HTTP schemes.
+- Do not repeatedly crawl the same domain in one job. Cache assessment results and apply a recheck TTL.
+
+J. FRONTEND AND PAGE UI IMPROVEMENTS
+After the build is clean and backend contract is stable, improve the existing ProspectLocator page without redesigning unrelated application pages or changing Avartah's branding.
+Keep the existing dark Obsidian visual language and bronze accents. Make the page responsive on mobile, tablet and desktop.
+Organize the page into:
+1. Search command: niche/category, location, website opportunity filters, qualified target (default 20), Discover button.
+2. Quick niche shortcuts already supported by the app.
+3. Live job status: Discovering, Enriching, Completed, Partial Success, Failed, Stopped.
+4. Progress metrics: raw candidates, unique candidates, qualified, duplicates, excluded good websites, missing-contact candidates, provider failures.
+5. Results table: business, location, website status, phone, email, WhatsApp/social availability, qualification score, CRM status and actions.
+6. Separate review area for excluded/no-contact/duplicate records where useful; do not mix these with qualified results.
+7. CRM promotion controls for selected qualified prospects, with explicit administrator confirmation.
+8. Search history/job summaries only if they can be implemented with compact metadata and low database write volume.
+Use clear empty, loading, partial-success and error states. Replace the generic “Server returned invalid response” with a useful message based on status and safe server error code. Do not expose stack traces, provider secrets or internal credentials.
+Progress polling should initially be 5–10 seconds with backoff when no progress occurs. Polling must be read-only and must stop on terminal job states.
+Do not add UI controls that are decorative or nonfunctional. Do not automatically send email or WhatsApp messages; open the relevant composer with a draft and require the administrator to send.
+
+K. DATABASE AND STORAGE CONTROLS
+- Use existing Neon connection configuration and pooling strategy.
+- Do not create a database connection per candidate.
+- Batch duplicate lookups and inserts.
+- Avoid SELECT * where only a few fields are needed.
+- Add indexes only after inspecting query plans and existing indexes.
+- Avoid frequent progress updates to Neon; keep transient counters in job memory or the existing job mechanism.
+- Add retention/cleanup only for transient job metadata that is actually persisted.
+- Do not delete existing CRM/prospect records as a shortcut to reduce storage.
+- Provide measured before/after estimates or counts for database queries and writes per search. Do not invent savings percentages.
+
+L. SECURITY AND ACCESS CONTROL
+- Keep all discovery, search-history and CRM-promotion endpoints administrator-protected.
+- Validate request body types and impose maximum lengths.
+- Enforce rate limits server-side per administrator/account and per provider; do not trust only X-Forwarded-For because it may be spoofed unless the deployment proxy is trusted and configured.
+- Prevent duplicate concurrent jobs for the same normalized query and administrator.
+- Do not expose provider keys, stack traces or internal error details.
+- Preserve existing authentication/session behavior unless a confirmed security/build issue requires a minimal fix.
+- Preserve SSRF and redirect protections in website enrichment.
+
+M. TESTS REQUIRED
+Add or update tests for:
+1. Clean install from package-lock.
+2. TypeScript typecheck.
+3. Vite frontend build.
+4. esbuild server bundle.
+5. API response contract for success, empty success, partial success, provider failure, rate limit and malformed provider response.
+6. Automatic multi-batch continuation and immediate stop at 20 qualified.
+7. Candidate/request/time budget stopping.
+8. Provider 429 cooldown and bounded retries.
+9. No rapid Nominatim request bursts.
+10. Deduplication within a batch and against existing Neon records.
+11. Existing CRM values are not overwritten by empty discovery data.
+12. No permanent insert for rejected raw candidates.
+13. Qualified inserts are batched and awaited.
+14. Concurrent identical searches cannot create duplicate records.
+15. Progress polling performs no discovery or database writes.
+16. Legacy route cannot create duplicate parallel ingestion.
+17. Website SSRF and redirect protections remain active.
+18. Authentication and administrator authorization remain intact.
+Use a dedicated test database or mocked database/provider clients. Never run destructive tests against production Neon.
+
+N. REQUIRED FINAL VERIFICATION
+Run and report the actual result of:
+- npm ci
+- npm run typecheck
+- npm run build
+- npm test
+- targeted prospect-engine tests
+- Vercel build/deployment configuration checks where available
+
+The existing npm test script does not automatically include every test file in the repository. Inspect test coverage and explicitly run the relevant prospect and Business OS integration tests when dependencies/environment permit. Do not silently omit failing tests.
+
+O. DELIVERY
+Return:
+1. A complete corrected ZIP based on the uploaded rollback archive.
+2. A concise list of files changed and why.
+3. The original build error(s), exact fix(es), and final build output.
+4. Confirmation of which prospecting endpoint is authoritative and what happened to the legacy route.
+5. Provider request limits, concurrency, retry and cooldown settings.
+6. Neon query/write behavior before and after, based on measured instrumentation or test counts.
+7. Test results marked PASS, FAIL or NOT RUN.
+8. Any required environment variables or migrations, without asking the user to paste secrets into chat.
+
+FINAL RULES
+- Build stability comes first.
+- Do not reintroduce the reverted implementation.
+- Do not claim a build passes unless it actually passes.
+- Do not lower qualification standards to force 20 results.
+- Do not store every raw or rejected business in Neon.
+- Do not increase provider request volume to chase a target.
+- Continue discovery only within explicit limits and only while useful source data remains.
+- Preserve existing working application features and keep changes targeted.

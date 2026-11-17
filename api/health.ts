@@ -1,9 +1,10 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import app from '../server.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.status(200).json({
-    status: 'OK',
-    message: 'Avartah Solutions API Gateway is active',
-    timestamp: new Date().toISOString()
-  });
+/**
+ * Integrated Vercel Serverless Handler: Health Check
+ * Delegates to the authoritative Express application in server.ts.
+ */
+export default function handler(req: VercelRequest, res: VercelResponse) {
+  return app(req as any, res as any);
 }

@@ -1,56 +1,48 @@
-
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Quote } from 'lucide-react';
+import { Check } from 'lucide-react';
 
-const reviews = [
+const engineeringStandards = [
   {
-    name: 'Nick Widmann',
-    role: 'CEO at VMOC',
-    text: '“We more than doubled our conversion rate” - No team has been as dedicated to our success as Avartah.',
-    source: 'Clutch'
+    category: 'Ownership',
+    title: 'Complete Repository & Data Ownership',
+    summary:
+      'Every bespoke engagement delivers full source code ownership, documented schemas, and clean handoff without proprietary vendor lock-in.',
   },
   {
-    name: 'Aaron Kozinets',
-    role: 'CEO at Influence Hunter',
-    text: '“We get 30-70 leads every single day” - They hit the nail on the head on all our goals.',
-    source: 'Clutch'
+    category: 'Delivery',
+    title: 'Milestone-Tracked Client Portal',
+    summary:
+      'Clients follow sprint progress, inspect staging builds, and approve deliverables directly inside a dedicated workspace.',
   },
   {
-    name: 'Cody Voelker',
-    role: 'President - Panic Safety',
-    text: '“We’ve seen a big increase in partnership requests” - Redesigning our site was the best decision of the year.',
-    source: 'Clutch'
-  }
+    category: 'Reliability',
+    title: 'Type-Safe Full-Stack Engineering',
+    summary:
+      'Interfaces, API validation, and relational PostgreSQL storage are engineered together to prevent fragile patchwork integrations.',
+  },
 ];
 
 const Reviews: React.FC = () => {
   return (
-    <div className="space-y-6">
-      {reviews.map((rev, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, x: -20 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.1 }}
-          className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-premium group hover:border-sunset/20 transition-all"
+    <div className="space-y-4">
+      {engineeringStandards.map((item) => (
+        <div
+          key={item.title}
+          className="p-5 sm:p-6 rounded-xl border border-slate-200 dark:border-[#30363B] bg-white dark:bg-[#171A1D] transition-colors"
         >
-          <div className="flex items-start gap-4">
-             <Quote className="text-sunset shrink-0" size={24} />
-             <div>
-                <p className="text-[#0F172A] text-lg font-bold leading-tight mb-4 italic">
-                  {rev.text}
-                </p>
-                <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 bg-slate-100 rounded-full" />
-                   <div>
-                      <p className="font-black text-[10px] uppercase tracking-tighter">{rev.name}</p>
-                      <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest">{rev.role}</p>
-                   </div>
-                </div>
-             </div>
+          <div className="flex items-center justify-between text-xs mb-2">
+            <span className="font-mono font-semibold text-[#C58A52] uppercase tracking-wider">
+              {item.category}
+            </span>
+            <Check size={14} className="text-[#C58A52]" aria-hidden="true" />
           </div>
-        </motion.div>
+          <h3 className="text-base font-bold text-slate-900 dark:text-[#F2F1ED] mb-1.5">
+            {item.title}
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-[#A3A9AF] leading-relaxed">
+            {item.summary}
+          </p>
+        </div>
       ))}
     </div>
   );

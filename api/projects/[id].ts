@@ -1,19 +1,10 @@
-import { neon } from '@neondatabase/serverless';
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import app from '../../server.js';
 
-const sql = neon(process.env.DATABASE_URL!);
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { id } = req.query;
-  if (req.method === 'DELETE') {
-    try {
-      await sql`DELETE FROM projects WHERE id = ${id as string}`;
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Neon Delete Error (Project):', error);
-      res.status(500).json({ error: 'Failed to delete project' });
-    }
-  } else {
-    res.status(405).json({ error: 'Method not allowed' });
-  }
+/**
+ * Integrated Vercel Serverless Handler: Project by ID
+ * Delegates to the authoritative Express application in server.ts.
+ */
+export default function handler(req: VercelRequest, res: VercelResponse) {
+  return app(req as any, res as any);
 }

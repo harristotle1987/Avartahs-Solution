@@ -1,0 +1,631 @@
+AVARTAH SOLUTIONS — GOOGLE AI STUDIO IMPLEMENTATION INSTRUCTIONS
+Security, Paystack, Authentication, Tenant Isolation and Production Readiness
+Target: Latest uploaded project ZIP: avartah-solutions (14) (2).zip
+Database: Neon PostgreSQL ONLY
+Deployment target: Vercel
+Payment provider: Paystack
+Currency: NGN
+
+============================================================
+0. EXECUTION DIRECTIVE — READ FIRST
+============================================================
+
+You are modifying the existing Avartah Solutions application. This is an implementation task, not an audit-only task.
+
+Read this entire instruction file before changing code. Then inspect the complete current project ZIP and verify every referenced file, function, route, schema and line number against the actual source. Line references below are approximate; code structure may have shifted.
+
+MANDATORY:
+1. Implement the fixes in the actual source code. Do not return advice, pseudocode, a checklist alone, or sample snippets.
+2. Preserve the existing React/Vite/TypeScript/Express architecture, visual design, routes, features and working workflows. Do not rebuild the application or remove unrelated features.
+3. Neon PostgreSQL remains the sole database. Do not introduce Firebase, Firestore or Supabase.
+4. Never activate a paid plan based only on browser input, webhook metadata, a query parameter, or a frontend success screen.
+5. Never expose session tokens, database credentials, Paystack secret keys or signing secrets to browser JavaScript, source control, logs or generated reports.
+6. Do not use fake payment success, mocked production transactions, fabricated bank details, random audit scores or simulated security checks.
+7. Add or update database migrations safely. Do not drop existing production data or destructively recreate tables.
+8. Run formatting, TypeScript checks, production build and automated tests if dependencies and environment permit. Report every command and its actual result. Never claim a test passed if it was not run.
+9. If a requirement cannot be implemented safely because information or configuration is missing, fail closed and explain exactly what is needed.
+10. At the end, provide the complete modified project as a ZIP and a concise implementation report.
+
+Before coding, create an internal task list from every requirement in this file. Work through all sections; do not stop after the first few fixes.
+
+============================================================
+1. P0 — FIX PAYSTACK WEBHOOK PAYMENT ACTIVATION
+============================================================
+
+Primary file: api/businessOSRouter.ts
+Approximate area in latest audit: webhook handler around lines 1687–1773.
+Related files: lib/paystack.ts, payment/subscription migrations and all payment service modules.
+
+CURRENT DEFECT:
+The webhook path can use tenant_id and plan_id from webhook metadata to update payment/subscription state without adequately proving that the event corresponds to a pre-existing pending payment with the expected reference, tenant, plan, amount and currency.
+
+REQUIRED IMPLEMENTATION:
+
+A. Treat webhook payload and metadata as untrusted input.
+- Verify the webhook signature against the exact raw request body using the currently documented Paystack signing procedure.
+- Preserve raw request bytes before JSON parsing. Do not stringify parsed JSON and assume it is equivalent to the original signed bytes.
+- Use the correct configured Paystack secret/signing key for the selected environment.
+- Compare signatures using a constant-time comparison after validating their encoding and length.
+- Reject missing, malformed or invalid signatures with an appropriate non-success response.
+- Do not accept unsigned events or a fallback signature scheme invented by the application.
+- Check current official Paystack webhook documentation before implementing signature details. Do not assume a timestamped signature format unless Paystack documents and uses it for this integration.
+
+B. Require a pre-existing payment record.
+- Find the payment by the exact Paystack reference in the verified event.
+- The payment record must already exist in Neon and must be in the pending state.
+- Never create a new payment solely from webhook metadata.
+- Never trust webhook metadata as the authority for tenant_id, user_id, plan_id, amount, currency or entitlement.
+- Load tenant, user, plan and expected amount from the stored pending payment record and trusted database records.
+- Reject unknown references, already-invalid references, mismatched tenants, mismatched plans and inconsistent payment records.
+- If an event is a duplicate for an already completed payment, handle it idempotently without granting another subscription or extending entitlement again.
+
+C. Verify the transaction with Paystack server-to-server.
+- Call Paystack's transaction verification endpoint using the stored reference.
+- Require provider status to be successful.
+- Require the provider's returned reference to exactly equal the stored/requested reference.
+- Compare provider amount in kobo against the expected stored amount in kobo.
+- Compare currency exactly against the stored expected currency (NGN for this configured Nigerian payment flow).
+- Validate customer identity/email against the expected payment/customer record where available.
+- Validate any required channel or transaction identifiers according to the actual Paystack response contract.
+- Do not accept a browser callback or webhook metadata as proof of payment.
+
+D. Atomic database transition.
+Within one Neon/PostgreSQL transaction:
+1. Lock or conditionally claim the pending payment row.
+2. Confirm the row remains pending and all expected fields still match.
+3. Mark the payment successful and store the verified provider transaction ID/reference and safe verification metadata.
+4. Activate or update the subscription from the plan stored in the payment row.
+5. Update the tenant entitlement/plan using server-calculated plan data.
+6. Record an audit event.
+7. Commit all changes together.
+If any operation fails, roll back all changes.
+
+Use conditional updates such as UPDATE ... WHERE id = $1 AND status = 'pending' RETURNING ... and verify exactly one row was returned. Use row locking where appropriate. Prevent concurrent duplicate webhook deliveries from applying the same entitlement twice.
+
+E. Event deduplication.
+- Add a durable webhook event table or equivalent event-idempotency mechanism if not already present.
+- Use a unique constraint for the Paystack event identifier where available. If the provider event does not expose a stable unique ID, use a carefully defined deterministic event identity based on the provider reference and event type, while still retaining the transaction reference as the primary payment idempotency key.
+- Claim the event atomically using INSERT ... ON CONFLICT DO NOTHING RETURNING ...
+- Only the request that successfully claims a new event may process it.
+- Do not use a separate SELECT-then-INSERT race-prone pattern.
+- A duplicate event must not create another subscription or reset the subscription period.
+
+F. Event types.
+- Process only documented Paystack event types relevant to successful transactions.
+- A charge.success event is not sufficient by itself; perform all database and provider verification above.
+- Do not let failed, abandoned, reversed, refunded or unrelated events activate a plan.
+- Implement appropriate state transitions for refunds/reversals only if the current product requirements support them. Otherwise record them for reconciliation and alerting without granting new entitlements.
+- Never downgrade or cancel a subscription from an unverified event.
+
+G. Webhook response and resilience.
+- Return success only after the event has been durably recorded and processed or safely queued.
+- For temporary database/provider errors, return a retryable non-2xx response so Paystack can retry.
+- Do not log secrets, full card data, authorization headers, session tokens or unnecessary personal/payment data.
+- Add structured safe logs with event type, internal payment ID, reference suffix or safe correlation ID, processing result and timestamp.
+
+============================================================
+2. P0 — HARDEN THE PAYSTACK VERIFY ENDPOINT
+============================================================
+
+Primary file: api/businessOSRouter.ts
+Approximate area: payment verification route around lines 1540–1685.
+Related file: lib/paystack.ts.
+
+Required:
+1. Require authenticated user and verified tenant membership.
+2. Resolve the pending payment from Neon by exact reference and authenticated tenant. Never accept tenant_id, user_id, plan_id or amount as authoritative request fields.
+3. Require an existing pending payment record. Reject unknown or terminal payment states.
+4. Call Paystack verification server-to-server using PAYSTACK_SECRET_KEY.
+5. Validate all of:
+   - provider status is successful;
+   - exact reference equality;
+   - amount exactly matches the stored expected amount in kobo;
+   - currency exactly matches the stored expected currency;
+   - tenant and customer/payment ownership match the stored record;
+   - plan matches the stored payment record;
+   - the payment has not already been consumed or activated.
+6. Never calculate the expected amount from a client-supplied value. Load plan price from trusted server-side plan configuration/database and persist the expected amount when initializing the payment.
+7. Perform payment success and subscription activation in one database transaction with conditional state transition and idempotency.
+8. Return a generic safe response. Do not expose Paystack secret, raw provider payload, database errors or sensitive payment details.
+9. If payment is already successful, return an idempotent “already processed” response without creating another subscription or extending its expiry.
+10. Add tests for forged references, wrong tenant, wrong plan, amount mismatch, currency mismatch, unsuccessful provider status, duplicate verification, concurrent verification and database rollback.
+
+============================================================
+3. P0 — REMOVE SESSION TOKEN EXPOSURE TO BROWSER JAVASCRIPT
+============================================================
+
+Primary files:
+- lib/auth.ts
+- lib/api.ts
+- lib/businessOSApi.ts
+- context/AuthContext.tsx
+- pages/JobFinderPage.tsx
+- all other code that reads/writes avartah_admin_session or accesses response.data.token.
+
+CURRENT DEFECT:
+Login/registration responses return a session token and browser code stores it in localStorage under avartah_admin_session. This defeats HttpOnly cookie protection and increases the impact of XSS.
+
+REQUIRED IMPLEMENTATION:
+1. Browser authentication must use the server-issued HttpOnly cookie.
+2. Set cookie attributes appropriately:
+   - HttpOnly=true
+   - Secure=true in production
+   - Path=/
+   - SameSite=Lax where compatible with the application's deployment and navigation model.
+   - Use a deliberate, documented cross-site policy only if the actual architecture requires it.
+   - Set a sensible Max-Age/Expires aligned with server session expiry.
+3. Stop returning raw session tokens in browser-facing JSON responses.
+4. Remove all browser localStorage/sessionStorage writes and reads for authentication tokens, including avartah_admin_session.
+5. Do not store access tokens in React state, URL query parameters, DOM attributes or logs.
+6. Ensure browser fetch requests that need the cookie use credentials: 'include' where required.
+7. Configure CORS to allow only the exact trusted application origins and credentials. Never combine wildcard origin with credentialed cookies.
+8. Ensure logout revokes the server-side session and clears the cookie with matching Path, SameSite and Secure attributes.
+9. Ensure password reset, session rotation and account-security flows do not reintroduce browser-visible tokens.
+10. Search the entire repository for:
+    - avartah_admin_session
+    - localStorage
+    - sessionStorage
+    - data.token
+    - Authorization: Bearer
+    - sessionToken
+    - accessToken
+   Review every occurrence. Remove browser token persistence while preserving any legitimate server-to-server or non-browser authentication mechanism with clear separation.
+11. Do not break the single login modal or existing login UX.
+
+CSRF:
+- Because cookies are automatically attached by browsers, protect state-changing requests.
+- Use a robust CSRF design compatible with this app: synchronizer token tied to the session or a properly implemented double-submit cookie/token pattern.
+- Validate Origin against a strict allowlist for state-changing browser requests.
+- Validate Referer as a secondary control where appropriate.
+- Do not treat SameSite alone as complete CSRF protection.
+- Exempt the Paystack webhook only from browser CSRF checks; it must still pass Paystack signature validation.
+- Do not exempt ordinary business OS mutations.
+
+============================================================
+4. P0 — FIX SESSION SECRET VALIDATION
+============================================================
+
+Primary file: lib/serverAuth.ts
+Approximate area: lines 24–35.
+
+CURRENT DEFECT:
+The cached-secret path may accept a secret of 16 characters before enforcing the production minimum of 32 characters.
+
+REQUIRED:
+1. Validate secret presence and length before caching or returning it.
+2. In production require a cryptographically random secret with at least 32 bytes of entropy. Do not equate character count alone with entropy; provide deployment guidance to generate a secure random value.
+3. Fail closed if production secret is missing or weak. Never fall back to a hardcoded/default secret.
+4. Ensure all code paths use the same validation function.
+5. Do not log the secret or include it in errors.
+6. Ensure session signatures use a modern, appropriate HMAC algorithm and constant-time comparison.
+7. Ensure expired, revoked, malformed and tampered sessions are rejected.
+8. Ensure database session insertion failure prevents session issuance. Never issue a valid browser session if persistent session creation failed.
+9. Add tests for missing secret, 16-character secret, 31-character secret, valid strong secret, secret rotation, invalid signature, expired session, revoked session and database insert failure.
+
+============================================================
+5. P1 — COMPLETE CSP AND HTTP SECURITY HEADERS
+============================================================
+
+Primary file: server.ts
+Inspect Vercel deployment configuration and any existing security middleware.
+
+Implement a restrictive Content-Security-Policy compatible with the real application. Do not blindly copy a policy that breaks Vite assets, required API calls or legitimate payment redirects.
+
+At minimum:
+- default-src 'self'
+- object-src 'none'
+- base-uri 'self'
+- frame-ancestors 'none' unless a documented embedding requirement exists
+- form-action restricted to trusted origins
+- script-src restricted to self and required nonces/hashes; avoid unsafe-eval
+- style-src as restrictive as the existing styling stack permits
+- img-src limited to self and explicitly required image sources
+- connect-src limited to the app API, Neon only where browser access is actually intended (normally it should not be), and explicitly required third-party endpoints
+- upgrade-insecure-requests in production where appropriate.
+
+Also implement/verify:
+- Strict-Transport-Security in production HTTPS.
+- X-Content-Type-Options: nosniff.
+- Referrer-Policy with a privacy-preserving value.
+- Permissions-Policy disabling unused browser capabilities.
+- frame protection through CSP frame-ancestors.
+- Explicit CORS allowlist, not wildcard credentials.
+- Request body size limits and content-type validation.
+- Safe error handling without stack traces or SQL details in production.
+
+If CSP requires inline scripts/styles, use nonces or hashes where feasible. Do not solve CSP errors by broadly adding unsafe-inline or unsafe-eval without documenting and justifying the exception.
+
+============================================================
+6. P1 — REMOVE CLIENT-CONTROLLED CALLBACK DESTINATIONS
+============================================================
+
+Primary files:
+- api/businessOSRouter.ts
+- lib/paystack.ts
+- frontend checkout components.
+
+CURRENT DEFECT:
+The payment initialization route accepts callback_url from the request body.
+
+REQUIRED:
+1. Define PAYSTACK_CALLBACK_URL or derive it from a strictly validated APP_BASE_URL on the server.
+2. Reject arbitrary callback_url supplied by the browser.
+3. Validate APP_BASE_URL against an explicit deployment allowlist.
+4. Never redirect users to a callback destination supplied by arbitrary request input.
+5. Callback pages must not activate subscriptions. They may only display payment status and request server-side verification.
+6. Never trust success=true, status=success, reference or plan query parameters without server verification.
+
+============================================================
+7. P1 — TENANT ISOLATION AND AUTHORIZATION AUDIT
+============================================================
+
+Primary files:
+- api/businessOSRouter.ts
+- lib/serverAuth.ts
+- all Business OS API routers and database query modules.
+
+Inspect every endpoint that reads or mutates tenant-owned data:
+customers, products/services, quotations, invoices, payments, subscriptions, staff, settings, bookings, files, reports and dashboard data.
+
+Required:
+1. Derive user identity from the validated server session only. Never trust x-user-email, x-user-id, tenant_id or role supplied by the browser.
+2. Verify tenant membership on every tenant-scoped request.
+3. Enforce tenant_id in every SELECT, UPDATE and DELETE query. Do not fetch by resource ID alone and then assume ownership.
+4. Verify object ownership for nested resources (for example invoice line items, customer records and payment references).
+5. Verify role/permission on the server for every administrative mutation.
+6. Distinguish platform Super Admin from tenant Owner, Admin and Staff. Do not allow a tenant role to become a platform role.
+7. Staff must not gain owner-only billing, plan, subscription or staff-management permissions.
+8. Avoid leaking whether another tenant's resource exists. Return safe 404/403 responses consistently.
+9. Add foreign keys and appropriate tenant-aware constraints where safe.
+10. Add integration tests proving Tenant A cannot read, update, delete or pay for Tenant B's records, including guessed IDs and nested resources.
+11. Verify all SQL uses parameterized queries. Never interpolate user input into SQL identifiers or values.
+12. Do not change existing tenant data destructively. Use safe migrations and backfills.
+
+============================================================
+8. P1 — PAYMENT DATABASE INTEGRITY AND STATE MACHINE
+============================================================
+
+Inspect current Neon migrations and schema before adding tables. Reuse existing structures where correct.
+
+Payment state model:
+- pending
+- success
+- failed
+- abandoned
+- refunded
+- reversed
+
+Requirements:
+1. Define allowed transitions. A terminal success cannot be processed again as a new payment.
+2. Only server-verified provider success can transition pending -> success.
+3. Keep payment state separate from subscription state.
+4. Store amount as integer minor units (kobo), never floating-point naira.
+5. Store currency explicitly.
+6. Store exact unique payment reference.
+7. Add unique constraints for provider/reference and webhook event identity.
+8. Add foreign keys linking payments to tenant, user and plan as appropriate.
+9. Use transactions for payment/subscription/entitlement changes.
+10. Store provider transaction ID and verification timestamp.
+11. Keep a safe audit trail for payment initiation, verification, webhook receipt, activation and reconciliation.
+12. Do not store full card numbers, CVV, PIN or other prohibited payment credentials.
+13. Add indexes for tenant_id, payment reference, status and subscription lookup.
+14. Ensure duplicate event delivery cannot extend subscription expiry or create duplicate subscriptions.
+15. If the database migration already has equivalent constraints, do not add duplicate structures.
+
+============================================================
+9. P1 — REGISTRATION, PLAN AND SUBSCRIPTION ENTITLEMENTS
+============================================================
+
+Primary file: api/businessOSRouter.ts, registration route around lines 187–196 and all upgrade/plan routes.
+
+Keep the existing correct Free-plan registration behaviour.
+
+Requirements:
+1. New registrations may receive only the Free plan or a clearly defined free trial according to server policy.
+2. Ignore/reject client-supplied paid plan activation fields.
+3. Paid plan activation must occur only after a verified pending Paystack payment.
+4. Upgrade routes must initialize checkout, not directly update the tenant's paid plan.
+5. Do not allow a browser to call an endpoint that simply sets plan_id or subscription status to active.
+6. Calculate price and quota from trusted server-side plan records.
+7. Verify subscription status and entitlement on the server for each restricted feature.
+8. Enforce quotas server-side, not only by hiding frontend controls.
+9. Handle expiry, renewal, cancellation, refund and reversal according to explicit state transitions.
+10. Add tests for forged plan IDs, free-to-paid bypass, expired subscription, wrong tenant and staff attempting billing actions.
+
+============================================================
+10. P1 — RATE LIMITING, INPUT VALIDATION AND SSRF
+============================================================
+
+Inspect server.ts and all API routes.
+
+Rate-limit at minimum:
+- login and password-reset attempts;
+- registration;
+- payment initialization and verification;
+- AI/audit endpoints;
+- prospect discovery/scraping;
+- admin mutations.
+
+Use appropriate per-IP and per-account controls. Do not apply a rate limit that prevents legitimate Paystack webhook retries. Use a separate webhook strategy.
+
+Input validation:
+- Use a consistent schema validation library already installed where possible.
+- Validate type, length, format, ranges and allowed enum values.
+- Reject oversized request bodies and unexpected content types.
+- Normalize email addresses and other identifiers consistently.
+- Avoid returning raw database/provider errors.
+
+SSRF protection for prospecting/auditing:
+- Block loopback, private, link-local, multicast, reserved and cloud metadata IP ranges for IPv4 and IPv6.
+- Resolve DNS and validate all resolved addresses before connecting.
+- Revalidate every redirect target.
+- Protect against DNS rebinding by ensuring the address used for the connection is the address that was validated.
+- Restrict protocols to HTTP/HTTPS.
+- Reject credentials embedded in URLs.
+- Apply connection and response timeouts and response-size limits.
+- Do not fetch arbitrary user-supplied URLs from the browser without server-side validation.
+- Preserve legitimate prospecting functionality and existing qualification rules.
+
+============================================================
+11. REMOVE FABRICATED BANK DETAILS AND DEMO PAYMENT DATA
+============================================================
+
+Primary file identified in the latest audit: lib/migrations.ts, around lines 1189–1196.
+Also inspect onboarding, invoices, seeded data and frontend defaults.
+
+Requirements:
+1. Remove hardcoded Zenith bank/account defaults and any fabricated bank account details.
+2. Do not display demo bank details as if they belong to the business or Avartah.
+3. If bank transfer is supported, require the authenticated business owner to configure and verify their own details.
+4. Clearly label optional bank details as unconfigured until saved by the owner.
+5. Do not silently seed real-looking account numbers into production tenants.
+6. Preserve legitimate demo data only when unmistakably labelled DEMO and isolated from production payment flows.
+7. Ensure Paystack checkout is not presented as a bank-transfer payment unless the actual provider flow supports it.
+
+============================================================
+12. UPDATE DOCUMENTATION AND ENVIRONMENT CONFIGURATION
+============================================================
+
+Primary files:
+- README.md
+- .env.example (create or update safely)
+- deployment documentation.
+
+README currently contains outdated Firebase/Firestore references. Update all setup and deployment instructions to reflect the actual Neon-only architecture.
+
+Document environment variable names, purpose and whether each is server-only:
+- DATABASE_URL
+- SESSION_SECRET
+- APP_BASE_URL
+- PAYSTACK_SECRET_KEY
+- PAYSTACK_CALLBACK_URL
+- PAYSTACK_MODE (test or live)
+- PAYMENT_CURRENCY (NGN)
+- any exact webhook signing secret required by the currently documented Paystack setup
+- any explicit allowed frontend origins.
+
+Do not put real values in .env.example.
+Do not place server secrets in VITE_ variables or other frontend-exposed configuration.
+Never include a populated .env file in the output ZIP.
+Ensure .env, .env.local and other secret-bearing files are ignored by Git.
+Search the entire repository and Git-tracked files for credentials, tokens, private keys and populated connection strings. Do not print discovered secret values in the report.
+If a real secret was included in the supplied ZIP or previously committed, tell the owner to rotate it. Do not claim that source deletion alone makes an exposed credential safe.
+
+============================================================
+13. TESTS — TEST THE REAL ROUTES, NOT JUST SIMULATED LOGIC
+============================================================
+
+Primary files:
+- test/paystack_security.test.ts
+- test/businessOS_integration.test.ts
+- package.json
+- relevant route/service test files.
+
+The current default test command runs test-step10c-suite.ts and test/paystack_security.test.ts, but does not include test/businessOS_integration.test.ts. Update the test scripts so the meaningful integration suite is included in the standard CI/test workflow.
+
+Create or improve tests that exercise the actual Express router/API requests using an isolated test database and mocked Paystack HTTP responses. Do not mock away the code under test.
+
+Required payment tests:
+1. Valid pending payment and valid provider success activates exactly one subscription.
+2. Invalid webhook signature is rejected.
+3. Missing signature is rejected.
+4. Unknown reference is rejected.
+5. Webhook metadata with forged tenant_id is ignored/rejected.
+6. Forged plan_id is ignored/rejected.
+7. Wrong amount is rejected.
+8. Wrong currency is rejected.
+9. Provider reference mismatch is rejected.
+10. Provider transaction status other than success is rejected.
+11. Duplicate webhook does not duplicate activation.
+12. Concurrent duplicate webhook requests activate only once.
+13. Duplicate verify requests do not extend expiry.
+14. A payment belonging to Tenant A cannot activate Tenant B.
+15. A database failure rolls back payment and subscription changes.
+16. Client-supplied callback_url is ignored/rejected.
+17. Browser callback parameters cannot activate a subscription.
+18. Refund/reversal events cannot grant or re-grant entitlements.
+
+Required authentication tests:
+1. Missing/weak production SESSION_SECRET fails closed.
+2. Session DB insert failure does not issue a session.
+3. Expired, revoked and tampered tokens fail.
+4. Browser response does not contain the session token.
+5. No authentication token is stored in localStorage/sessionStorage.
+6. HttpOnly cookie is set with correct attributes.
+7. Logout revokes session and clears cookie.
+8. CSRF-invalid mutation is rejected.
+9. Untrusted Origin is rejected.
+10. CORS does not permit arbitrary credentialed origins.
+
+Required tenant tests:
+1. Tenant A cannot read Tenant B customers.
+2. Tenant A cannot modify/delete Tenant B invoices.
+3. Tenant A cannot access Tenant B payments or subscriptions.
+4. Staff cannot change plan or manage billing.
+5. Client-supplied x-user-email/x-user-id/tenant_id/role cannot override session identity.
+6. Nested resources enforce tenant ownership.
+
+Required regression tests:
+- single login modal still works;
+- existing public site pages still load;
+- existing admin routes still enforce Admin access;
+- Business OS pages remain responsive and protected;
+- prospecting and website audit functionality still work;
+- no test/simulation data enters live signals, leads, invoices or payments.
+
+Test script requirements:
+- Add a clear npm test command that runs unit, security and integration suites.
+- Add separate npm run test:unit, npm run test:security and npm run test:integration scripts if useful.
+- Ensure CI runs typecheck, tests and production build.
+- Use a dedicated test database. Never run destructive tests against production Neon.
+- Ensure test fixtures and test payment references are clearly marked and cannot be used in live mode.
+
+============================================================
+14. BUILD, TYPECHECK AND DEPENDENCY VERIFICATION
+============================================================
+
+Inspect package.json and lockfile.
+
+1. Confirm scripts for typecheck, tests and production build.
+2. Install dependencies using the package manager and existing lockfile, if the environment permits.
+3. Run the TypeScript compiler with no emit.
+4. Run all required tests.
+5. Run the production build.
+6. Fix errors introduced by your changes and any directly related pre-existing errors that prevent the app from building.
+7. Do not perform broad dependency upgrades unless required for a concrete vulnerability or compatibility fix.
+8. Do not suppress TypeScript errors with any, @ts-ignore or disabled checks merely to make the build pass.
+9. Report the exact commands, exit codes and meaningful results.
+10. If dependencies cannot be installed or external services are unavailable, state NOT RUN and why. Do not fabricate successful output.
+
+============================================================
+15. REQUIRED OWNER ACTIONS — DO NOT ASK FOR SECRETS IN CHAT
+============================================================
+
+The owner must configure secrets directly in the deployment environment, not paste them into Google AI Studio or ChatGPT.
+
+Required deployment configuration:
+- Neon DATABASE_URL
+- strong random SESSION_SECRET
+- Paystack test secret key for test mode
+- Paystack live secret key only when ready for production
+- exact configured webhook signing secret/key required by Paystack's current documentation
+- trusted APP_BASE_URL and PAYSTACK_CALLBACK_URL
+- explicit allowed frontend origins.
+
+Important:
+- Keep test and live credentials separate.
+- Start with Paystack test mode.
+- Do not initiate real charges in automated tests.
+- Verify the webhook URL in Paystack dashboard.
+- Rotate any Neon or session credential that appeared in the supplied ZIP or was committed to Git.
+- If Paystack secret keys appeared in source or a ZIP, rotate them immediately.
+- Never claim to have rotated credentials; only the owner can complete that action in the provider/deployment dashboards.
+
+============================================================
+16. FINAL ACCEPTANCE GATES — ALL MUST PASS
+============================================================
+
+Do not declare the task complete unless every applicable gate is satisfied.
+
+GATE 1 — PAYMENT WEBHOOK
+- Invalid signatures rejected.
+- Valid events require an existing pending payment.
+- Provider verification confirms exact reference, amount, currency and success.
+- Database activation is atomic and idempotent.
+- Duplicate and concurrent events cannot duplicate subscription activation.
+
+GATE 2 — PAYMENT VERIFY
+- Authenticated tenant ownership is enforced.
+- Client cannot choose amount, plan, tenant or callback destination.
+- Exact provider transaction details match the stored pending payment.
+- Repeated verification does not extend subscription twice.
+
+GATE 3 — SESSION SECURITY
+- No browser-visible session token.
+- No localStorage/sessionStorage auth token.
+- HttpOnly cookie is authoritative.
+- Secret validation fails closed.
+- Database persistence failure prevents session issuance.
+- Logout revokes the session.
+
+GATE 4 — CSRF/CORS/CSP
+- State-changing browser routes enforce CSRF and trusted Origin.
+- Webhook uses provider signature validation.
+- CORS uses exact allowed origins.
+- CSP and security headers are configured and tested.
+
+GATE 5 — TENANT ISOLATION
+- All tenant-owned routes enforce server-side membership and ownership.
+- Cross-tenant access tests pass.
+- Staff and tenant owners cannot access platform-only permissions.
+
+GATE 6 — DATABASE
+- Neon is the only database.
+- Payment state and subscription state are distinct.
+- Required constraints, indexes and transactions exist.
+- No destructive migration.
+
+GATE 7 — NO FABRICATED DATA
+- No hardcoded bank/account defaults.
+- No populated secrets in the output ZIP.
+- No mock payment success in production paths.
+
+GATE 8 — REGRESSION
+- Single login modal remains.
+- Existing features and responsive UI remain intact.
+- Existing public and admin routes work as intended.
+
+GATE 9 — TESTS
+- Actual route-level payment/auth/tenant tests exist.
+- Default test command includes security and integration suites.
+- Tests run against an isolated test database.
+
+GATE 10 — BUILD
+- TypeScript check passes.
+- Production build passes.
+- No new critical runtime errors are introduced.
+
+If a gate cannot be verified, label it NOT VERIFIED. Do not mark it PASS.
+
+============================================================
+17. REQUIRED FINAL DELIVERY REPORT
+============================================================
+
+After implementing, return:
+
+A. Files changed
+- List each changed/created file and the reason.
+
+B. Defects fixed
+- Map each defect in this instruction file to the actual code change.
+
+C. Database migrations
+- List migration filenames, tables, indexes, constraints and backfills.
+- Confirm no destructive data loss.
+
+D. Payment flow
+- Explain initialization, server verification, webhook signature validation, pending-payment matching, idempotency and subscription activation.
+
+E. Authentication flow
+- Explain cookie/session lifecycle, CSRF, logout and removal of browser token storage.
+
+F. Tenant security
+- Summarize route coverage and cross-tenant tests.
+
+G. Test/build evidence
+- Exact commands, pass/fail counts, exit codes.
+- Explicitly label anything not run as NOT RUN.
+
+H. Remaining owner actions
+- Environment variables, credential rotation, Paystack dashboard configuration, Neon migration execution and Vercel deployment steps.
+
+I. ZIP output
+- Provide the complete modified project ZIP.
+- Exclude node_modules, build caches, .env files, credentials, local databases, test secrets and unnecessary generated files.
+- Include .env.example with placeholders only.
+
+J. Acceptance gate table
+- PASS / FAIL / NOT VERIFIED for each of the ten gates above.
+
+FINAL INSTRUCTION:
+Do not say “100% secure”, “hack-proof” or “impossible to hack”. State only what the code and tests prove. The objective is to remove the identified vulnerabilities, enforce defense in depth and make the application ready for independent security review.

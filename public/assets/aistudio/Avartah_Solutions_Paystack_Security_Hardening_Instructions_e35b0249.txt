@@ -1,0 +1,765 @@
+AVARTAH SOLUTIONS — COMPREHENSIVE SECURITY, AUTHENTICATION AND PAYSTACK
+IMPLEMENTATION Google AI Studio execution brief Target codebase: latest
+uploaded avartah-solutions ZIP14 Priority: CRITICAL — complete before
+accepting live payments or onboarding paying businesses
+
+============================================================ 0. PAYSTACK
+COST AND IMPLEMENTATION DECISION
+============================================================
+
+Use PAYSTACK as the only payment provider for the first Business OS
+release.
+
+Paystack states that integration and maintenance have zero fees. This
+does NOT mean payment processing is free. Its published Nigeria pricing
+at the time this brief was prepared is: - Local transactions: 1.5% + NGN
+100; NGN 100 is waived for transactions under NGN 2,500; local fees are
+capped at NGN 2,000 per transaction. - International transactions:
+3.9% + NGN 100. - Paystack account activation and live-mode eligibility
+are subject to Paystack’s onboarding/approval requirements.
+
+Do not hardcode these fees into customer invoices or claim Avartah
+absorbs them. Treat provider fees as Paystack charges and display only
+if the product explicitly needs to explain them. Re-check Paystack’s
+official pricing before launch because fees can change.
+
+Official documentation: Pricing: https://paystack.com/pricing API:
+https://paystack.com/docs/api/ Initialize transaction:
+https://paystack.com/docs/api/transaction/#initialize Verify
+transaction: https://paystack.com/docs/api/transaction/#verify Webhooks:
+https://paystack.com/docs/payments/webhooks/ Verify payments:
+https://paystack.com/docs/payments/verify-payments/
+
+IMPORTANT: Do not describe Paystack as completely free. Integration is
+free; transaction processing is charged.
+
+============================================================ 1.
+EXECUTION DIRECTIVE — MODIFY THE ACTUAL PROJECT
+============================================================
+
+Work directly on the latest ZIP14 source code. Do not return another
+audit-only report, proposal, pseudocode, or list of recommendations.
+
+Implement the fixes in the actual files. Preserve the existing Avartah
+Solutions website and Business OS UI, routes, branding, layout,
+responsive behaviour and working features.
+
+Existing architecture to preserve: - React 19 - Vite 6 - TypeScript -
+Express 5 - Neon PostgreSQL as the sole application database - Existing
+authentication/session system, after hardening - Existing Business OS
+routes and components
+
+Non-negotiable constraints: - Neon PostgreSQL remains the sole database.
+Do not add Firebase, Firestore or Supabase. - Do not create a second
+login system or duplicate login modal. - Do not rebuild or redesign the
+existing UI. - Do not remove existing agency features, CRM, prospecting,
+website auditing, blogs, booking, recruitment or admin features. - Do
+not silently change unrelated trading or other projects. - Do not use
+mock payment success, fake transaction references, fake customer data or
+demo subscriptions in production. - Do not expose secrets in frontend
+code, logs, source files, ZIP exports or Git history. - Inspect existing
+middleware, schema, routes and migrations before editing. Reuse existing
+structures where safe; avoid duplicate tables and migrations. - Make
+minimal, targeted changes and preserve backward compatibility where
+possible. - If a required provider account credential is unavailable,
+implement the secure integration and clearly identify the environment
+variable the owner must configure. Never invent a credential.
+
+At the end, list every changed file, migration, test and command
+actually executed. Do not claim success for tests/builds that were not
+run.
+
+============================================================ 2.
+EMERGENCY: REMOVE AND ROTATE EXPOSED SECRETS
+============================================================
+
+Finding from ZIP14: The archive contains a populated .env file with
+sensitive database/session configuration, including DATABASE_URL and
+SESSION_SECRET. A .gitignore entry does not make a secret safe if the
+file is already included in an archive or tracked in Git.
+
+Files/areas to inspect: - .env - .env.* - .gitignore - Vercel
+environment configuration/documentation - lib/serverAuth.ts -
+lib/neon.ts or the actual Neon connection module -
+package/build/deployment scripts that package ZIP files
+
+Required changes: 1. Remove all populated .env files from deliverable
+ZIP archives and production source bundles. 2. Keep a .env.example
+containing variable names only and safe placeholder text, never real
+credentials. 3. Ensure .env, .env.local, .env.production, .env.*.local,
+private key files and local database dumps are ignored by Git and
+excluded from ZIP packaging. 4. Inspect Git tracking. If a secret has
+ever been committed, explain that deleting the file in a later commit
+does not remove it from Git history. Rotate the exposed secret
+immediately; history cleanup is a separate controlled operation. 5. Do
+not print secret values in logs, error responses or final reports. 6.
+Fail application startup in production if mandatory secrets are missing,
+too short or use known placeholder/default values. 7. Never silently
+fall back to a known development secret in production.
+
+Owner action required outside code: - Rotate the exposed Neon database
+password/connection credentials in Neon. - Replace DATABASE_URL in
+Vercel with the newly rotated connection string. - Generate a
+cryptographically random SESSION_SECRET of at least 32 random bytes and
+update Vercel. - Revoke/invalidate existing sessions after the secret
+rotation. - Redeploy and verify the production environment. - If any
+Paystack secret was ever exposed, rotate it in Paystack Dashboard too.
+
+Do not put actual secret values in this instruction, source code,
+screenshots or reports.
+
+============================================================ 3. FILE:
+lib/serverAuth.ts — HARDEN SESSION CREATION AND VALIDATION
+============================================================
+
+Previous ZIP14 findings: - Secret validation was inconsistent: a cached
+secret could pass a 16-character check before the production
+32-character requirement. - Session insertion errors were caught/logged
+while token creation could continue. - The browser token handling in
+lib/auth.ts stores the session token in localStorage.
+
+Required changes: A. Secret handling - Validate SESSION_SECRET once,
+before serving requests. - Require at least 32 bytes of
+cryptographically random secret material in every production
+deployment. - Do not accept short, blank, placeholder or default
+secrets. - Do not use weak fallback values. - Fail closed at startup if
+the production secret is invalid. - Avoid caching an invalid secret.
+
+B. Session issuance - A session token must never be returned unless the
+persistent session record was successfully created in Neon. - If session
+insertion fails, return an authentication failure and do not issue a
+usable token. - Store only a cryptographic hash of the bearer/session
+token in the database where feasible; never store plaintext session
+tokens. - Use cryptographically secure random token generation. -
+Enforce expiry, revocation and rotation. - Revoke all affected sessions
+after credential rotation or suspected compromise. - Validate the user
+is active and not suspended on each authenticated request. - Ensure role
+changes and account suspension take effect promptly.
+
+C. Token validation - Verify signature using constant-time comparison
+where applicable. - Validate issuer, audience, expiry and not-before
+claims if using JWT. - Reject malformed, expired, revoked and unknown
+sessions. - Never accept identity or role from client-supplied
+headers/body as authentication proof. - Resolve user identity and roles
+from verified server-side session/database state.
+
+D. Error handling - Return generic authentication errors to clients. -
+Do not expose secrets, SQL, stack traces or internal session details. -
+Log a safe event ID and security-relevant metadata without tokens or
+passwords.
+
+============================================================ 4. FILES:
+lib/auth.ts AND context/AuthContext.tsx — SECURE BROWSER AUTH
+============================================================
+
+Previous ZIP14 finding: lib/auth.ts stores session tokens in
+localStorage. Any successful XSS can read localStorage tokens.
+
+Required architecture: - Prefer server-managed session cookies with
+HttpOnly, Secure and an appropriate SameSite policy. - Do not expose
+session secrets or privileged credentials to browser JavaScript. -
+Remove localStorage token storage after a safe migration to the
+cookie-based session mechanism. - Keep one global authentication state
+in AuthContext; do not introduce duplicate login pages/modals. - Add a
+safe session bootstrap endpoint so the frontend can discover the current
+authenticated user without reading a token. - On logout, revoke the
+server-side session and clear the cookie. - On password change, account
+compromise, role downgrade or admin revocation, revoke affected
+sessions. - Ensure frontend state is cleared when the server returns
+401.
+
+Cookie settings: - Production: Secure=true, HttpOnly=true, Path=/,
+explicit SameSite policy. - Use SameSite=Lax where compatible with the
+application. - If cross-site cookies are genuinely required, document
+why SameSite=None is necessary and enforce CSRF protection. - Do not set
+a broad Domain attribute unless required. - Use separate development and
+production cookie settings safely.
+
+CSRF: - Implement a synchronizer-token or robust double-submit CSRF
+pattern appropriate to the chosen session architecture. - Protect every
+state-changing cookie-authenticated endpoint: POST, PUT, PATCH and
+DELETE. - Validate Origin/Referer against an explicit allowlist as an
+additional defence, not the only defence. - Do not exempt business,
+admin, billing, payment or account mutation routes. - Webhook routes are
+authenticated by provider signature and should not use browser CSRF
+tokens.
+
+============================================================ 5. FILES:
+server.ts AND API MIDDLEWARE — HTTP SECURITY
+============================================================
+
+Previous ZIP14 findings: - server.ts uses SameSite=None for the session
+cookie. - No effective CSRF-token validation was identified for Business
+OS mutations. - A Content Security Policy was not identified.
+
+Inspect: - server.ts - Express middleware ordering - cookie/session
+middleware - CORS configuration - API route registration - error
+handlers - static file serving and Vercel/serverless entry points
+
+Required changes: A. Security headers - Configure a restrictive
+Content-Security-Policy compatible with the real app. - Do not use
+unsafe-eval. - Avoid unsafe-inline where practical; use nonces or hashes
+if required. - Configure frame-ancestors to prevent clickjacking. - Keep
+X-Content-Type-Options: nosniff. - Configure Referrer-Policy. -
+Configure Permissions-Policy with only necessary browser capabilities. -
+Use HSTS in production only when HTTPS is correctly deployed; include
+subdomains only if all subdomains support HTTPS. - Set an appropriate
+frame protection policy. - Do not break legitimate payment-provider
+redirects or required assets. Explicitly allow only required domains.
+
+B. CORS - Use an explicit allowlist of actual production and development
+origins. - Never combine wildcard origin with credentials. - Reject
+unexpected origins for credentialed requests. - Do not reflect arbitrary
+Origin headers. - Keep allowed methods and headers minimal.
+
+C. Rate limiting Apply separate, sensible rate limits to: - Login and
+password-reset endpoints. - Registration and onboarding. - Session
+creation. - Business OS write endpoints. - Payment initialization. -
+Payment verification. - Public prospecting/search endpoints. - Admin
+endpoints. - Expensive AI/audit endpoints.
+
+Use IP and authenticated-account/tenant-aware controls as appropriate.
+Do not rate-limit Paystack webhook delivery in a way that causes valid
+provider retries to be dropped; verify signature and use safe
+provider-specific handling.
+
+D. Request validation - Validate request body, query parameters, path
+IDs, lengths, formats and enums. - Reject oversized bodies. - Use strict
+schemas and allowlisted fields. - Use parameterized SQL. - Return
+generic production errors without stack traces.
+
+E. SSRF and external fetches Preserve and further test the prospecting
+engine’s DNS/IP validation and redirect checks. Block loopback, private,
+link-local, reserved, multicast and cloud metadata destinations for IPv4
+and IPv6. Validate every redirect target and protect against DNS
+rebinding. Never let user-controlled URLs reach internal services.
+
+============================================================ 6. FILE:
+api/businessOSRouter.ts — REMOVE PAYMENT BYPASS AND PROTECT ALL ROUTES
+============================================================
+
+Previous ZIP14 critical findings: - Registration accepts client-supplied
+plan_id and can create an active subscription. - Upgrade endpoint around
+lines 1411–1444 directly changes a tenant plan and creates an active
+subscription. - Payment verification around lines 1466–1497 accepts a
+reference/plan ID without verifying the transaction with Paystack. -
+Earlier version also used client-supplied x-user-email; ensure no such
+trust remains anywhere.
+
+Required: 1. Inspect the entire router and enumerate every route. 2.
+Ensure every non-public route has server-side authentication. 3. Resolve
+user identity exclusively from verified server session. 4. Resolve
+tenant membership and role from the database for each request. 5. Never
+trust x-user-email, x-user-id, role, isAdmin, tenant_id or owner_id
+supplied by the browser as proof of access. 6. Tenant ID may identify
+the requested resource but never grants permission. 7. Scope every read,
+update and delete to the authenticated tenant. 8. Verify parent/child
+ownership for invoices, invoice items, customers, products, payments,
+staff and settings. 9. Use explicit DTO/schema allowlists to prevent
+mass assignment. 10. Prevent users from editing subscription status,
+plan price, payment status, platform role, tenant owner or privileged
+fields through generic update endpoints. 11. Use database transactions
+for multi-step business operations. 12. Do not expose internal stack
+traces or SQL errors.
+
+Search the entire repository for: - x-user-email - x-user-id -
+admin@avartah.com - biz_demo_luxe - isAdmin - plan_id -
+subscription_status - payment_reference - status = ‘active’ - any route
+that sets a subscription to active
+
+Remove all client-controlled or demo-based privilege paths.
+
+============================================================ 7. PAYSTACK
+IMPLEMENTATION — SERVER-SIDE ONLY
+============================================================
+
+Use official Paystack REST APIs over HTTPS: Base URL:
+https://api.paystack.co
+
+Use Paystack test mode first. Never use live credentials in development
+or automated tests.
+
+Required environment variables: - PAYSTACK_SECRET_KEY -
+PAYSTACK_PUBLIC_KEY only if a supported frontend SDK requires it; it is
+not a substitute for server verification. - PAYSTACK_WEBHOOK_SECRET or
+the exact current Paystack signing secret required by the official
+webhook method being implemented. - PAYSTACK_CALLBACK_URL -
+APP_BASE_URL - PAYMENT_CURRENCY=NGN for the initial Nigeria launch -
+PAYSTACK_MODE=test or live, with production safeguards.
+
+Keep secret key and webhook signing secret exclusively on the server.
+Never prefix secrets with VITE_ or expose them in frontend bundles.
+
+Fail closed if required payment configuration is missing. Do not fall
+back to mock success.
+
+A. Create a central payment service Create or update a dedicated
+server-side service, for example: - lib/paystack.ts or the existing
+payment service location. Do not put Paystack secret handling inside
+React components.
+
+Service responsibilities: - Initialize transaction. - Verify
+transaction. - Verify webhook signature. - Normalize provider
+response. - Validate amount/currency/reference/customer/metadata. -
+Handle provider timeouts and safe retries. - Avoid logging sensitive
+data. - Use HTTPS only. - Set strict network timeouts. - Do not follow
+arbitrary redirects from provider requests. - Never trust
+client-supplied amount, plan price, currency, email or tenant metadata
+without re-resolving and validating them from the database.
+
+B. Payment initialization endpoint Create or update an authenticated
+endpoint such as: POST /api/os/payments/initialize
+
+Server must: 1. Authenticate the user. 2. Verify the user has permission
+to pay for that tenant. 3. Load the requested plan from the server-side
+subscription_plans table/config. 4. Determine the authoritative price
+and currency on the server. 5. Reject unknown, inactive or unavailable
+plans. 6. Create a cryptographically unpredictable unique transaction
+reference. 7. Create a pending payment/order record in Neon before
+redirecting to Paystack. 8. Store tenant_id, user_id, plan_id, expected
+amount in kobo, currency, reference, status=pending, timestamps and safe
+metadata. 9. Call Paystack Initialize Transaction with server-calculated
+amount in the smallest currency unit. For NGN, multiply naira by 100 and
+use an integer. 10. Validate Paystack’s response structure and ensure
+authorization_url and reference are present. 11. Persist the provider
+response fields that are safe and necessary. 12. Return only the hosted
+authorization URL and public transaction reference to the browser. 13.
+Never activate a subscription at initialization. 14. Do not permit the
+client to choose an arbitrary amount or override plan price.
+
+C. Paystack callback/return endpoint Create a callback endpoint that
+accepts a transaction reference, but treat it only as a trigger to
+verify.
+
+The callback must: - Never trust a browser success query parameter. -
+Look up the pending payment by reference in Neon. - Resolve tenant,
+plan, amount and currency from the stored record. - Call Paystack’s
+server-side Verify Transaction API. - Require provider status=success. -
+Compare exact transaction reference. - Compare exact amount in kobo. -
+Compare exact currency. - Confirm transaction belongs to the intended
+customer/account where available. - Confirm the payment is for the
+intended tenant and plan. - Reject mismatches and keep payment
+pending/failed as appropriate. - Use an atomic database transaction to
+mark payment successful and activate/renew the subscription exactly
+once. - Be idempotent if the user refreshes or Paystack redirects
+repeatedly. - Never activate paid access solely because the browser
+returned to the callback.
+
+D. Verification endpoint Replace the unsafe implementation around
+api/businessOSRouter.ts lines 1466–1497.
+
+The endpoint must: - Require authenticated user and appropriate tenant
+membership. - Accept only a reference, not a client-supplied price or
+authoritative plan. - Find the existing pending transaction. - Verify
+through Paystack’s API from the server. - Validate amount, currency,
+reference, tenant, customer and success status. - Atomically process
+once. - Return current transaction/subscription status without exposing
+secret provider payloads. - Reject unknown, reused-for-different-order,
+forged, expired or mismatched references.
+
+E. Webhook endpoint Create a dedicated endpoint, for example: POST
+/api/os/payments/paystack/webhook
+
+Important implementation requirement: - Paystack webhook signature must
+be validated using the exact official mechanism documented for the
+account/integration mode. - Read and preserve the raw request body bytes
+before JSON parsing. Do not re-serialize parsed JSON to calculate a
+signature. - Use Node crypto HMAC SHA-512 and constant-time comparison
+according to the current official Paystack documentation. - Support the
+currently required Paystack signature header format. Paystack
+documentation may use Paystack-Signature with timestamp/key ID
+signatures for newer signing-secret mode and x-paystack-signature for
+legacy secret-key signing. Implement the currently configured official
+mode correctly; do not guess or accept an unsigned event. - For
+timestamped signatures, enforce the documented freshness window and
+constant-time comparison. - Reject invalid/missing signatures with
+401. - Never trust event fields until signature validation succeeds. -
+Process only relevant successful charge events for subscription
+activation. - Ignore unrelated event types safely. - Persist provider
+event IDs or a deterministic idempotency key and enforce a unique
+database constraint. - Duplicate/replayed webhook deliveries must not
+duplicate payments, invoices or subscriptions. - Verify transaction
+details server-to-server where appropriate before granting paid
+access. - Check reference, amount, currency, customer, tenant and plan
+against the pending database record. - Acknowledge valid events
+promptly; use a reliable persisted processing state/outbox if processing
+is deferred. - Handle provider retries safely. - Never let a webhook
+create a subscription from arbitrary metadata without a pre-existing
+pending payment record. - Record failed signature and mismatch attempts
+safely without logging secrets or full sensitive payloads.
+
+F. Payment state machine Use explicit states, for example: created ->
+pending -> success created -> pending -> failed created -> pending ->
+abandoned success -> refunded/reversed only through verified provider
+event and reconciliation rules
+
+Never allow: - failed -> success from client input - pending -> active
+subscription without verification - a duplicate event to create another
+entitlement - a refund/reversal to be silently ignored
+
+Keep payment state and subscription state distinct.
+
+G. Reconciliation Add a safe administrative reconciliation process: -
+Find old pending transactions. - Verify status with Paystack
+server-side. - Update only from authoritative provider results. -
+Rate-limit and audit reconciliation. - Never accept a manual reference
+as proof of payment. - Require explicit platform-admin authorization for
+any manual correction and record an immutable audit entry.
+
+============================================================ 8. DATABASE
+MIGRATIONS — PAYMENTS, IDEMPOTENCY AND AUDIT
+============================================================
+
+Inspect existing migrations first. Reuse existing payment/subscription
+tables where possible.
+
+Ensure the schema supports: - payments with tenant_id, user_id, plan_id,
+provider, reference, amount_minor_units, currency, status,
+provider_transaction_id, created_at, updated_at, verified_at. - unique
+payment reference. - unique provider transaction ID when present. -
+webhook_events with provider, event identity/deduplication key, event
+type, signature verification state, processing status, received_at,
+processed_at. - unique webhook event/deduplication key. - subscriptions
+with tenant_id, plan_id, status, period start/end, provider payment
+reference, created/updated timestamps. - audit_logs with actor, tenant,
+action, target, timestamp and safe metadata.
+
+Use foreign keys, CHECK constraints, indexes and unique constraints
+where appropriate.
+
+Data integrity: - Amount must be a non-negative integer in the smallest
+currency unit. - Currency must be a supported ISO code. - Payment
+references must be unique. - Payment status must use a constrained
+enum/check. - A payment cannot activate more than one subscription
+entitlement. - Tenant relationships must be enforced. - Use transactions
+and row locking/conditional updates to prevent concurrent duplicate
+activation.
+
+Do not destructively drop production tables or columns. Provide
+reversible migrations where possible and document rollback.
+
+============================================================ 9. REMOVE
+FREE PAID-PLAN ACTIVATION DURING REGISTRATION
+============================================================
+
+File: api/businessOSRouter.ts, registration endpoint around line 158
+onwards.
+
+Required behaviour: - Registration creates the tenant, owner membership
+and a Free plan/trial only if the product rules explicitly permit it. -
+A client-supplied plan_id must not directly grant a paid plan. - If the
+user selects a paid plan, create a pending checkout/payment intent and
+require verified Paystack payment before activating it. - Never create a
+paid active subscription in registration. - Server determines the plan
+price, duration, entitlements and currency. - Prevent duplicate tenant
+creation from repeated requests using safe idempotency. - Use database
+transaction for user, tenant, membership and initial subscription
+creation. - Verify email/identity according to existing authentication
+requirements before allowing sensitive actions. - Avoid account
+enumeration in registration/login responses.
+
+============================================================ 10. TENANT
+ISOLATION AND ROLE AUTHORIZATION — ALL BUSINESS OS ROUTES
+============================================================
+
+Inspect: - api/businessOSRouter.ts - lib/serverAuth.ts - all tenant
+membership/authorization helpers - all route handlers mounted under
+/api/os - database queries used by dashboard, customers, catalogue,
+invoices, payments, settings and staff.
+
+For every tenant-owned object: - Fetch by both object ID and authorized
+tenant ID. - Validate all referenced child records belong to the same
+tenant. - Never accept owner_id or role from the request body. - Never
+allow tenant switching without membership verification. - Prevent IDOR
+(insecure direct object reference). - Prevent privilege escalation and
+mass assignment. - Use owner/admin/staff permissions consistently. -
+Audit staff invitations, role changes, ownership changes, billing
+changes and deletion actions. - Return generic 404 for inaccessible
+tenant resources where appropriate to avoid resource enumeration.
+
+Test at minimum: Tenant A cannot read/update/delete Tenant B customers,
+invoices, catalogue items, payments, staff, settings or subscriptions,
+even when Tenant A knows valid record IDs.
+
+============================================================ 11.
+FRONTEND FILES — BUSINESS OS PAYMENT AND AUTH UX
+============================================================
+
+Inspect: - App.tsx - context/AuthContext.tsx - lib/auth.ts -
+lib/businessOSApi.ts - pages/business-os/RegisterOS.tsx -
+pages/business-os/BillingOS.tsx - pages/business-os/OnboardingOS.tsx -
+any checkout/callback/success pages - components/Navbar.tsx and login
+components
+
+Required UI behaviour: - Preserve existing design and page layouts. -
+Registration must not claim a paid plan is active before verified
+payment. - Billing page must show the current server-confirmed
+subscription status. - Paid-plan CTA calls the backend initialization
+endpoint. - Redirect to the Paystack-hosted checkout URL returned by the
+server. - Never call Paystack secret-key APIs from browser code. - On
+callback/return, show “Verifying payment” until the server confirms
+status. - Show success only after the backend reports verified
+success. - Show pending/failed/cancelled states accurately. - Allow safe
+retry without creating duplicate payments. - Refresh subscription state
+from server after verification. - Do not trust URL query parameters as
+payment proof. - Never show fabricated bank details or demo transaction
+history. - Remove hardcoded Zenith Bank account number and other
+fabricated financial defaults from OnboardingOS.tsx. - Keep bank/account
+fields empty unless the user enters them. - Do not store card numbers,
+CVV or sensitive payment credentials in Avartah. - Ensure only
+authorized owners/admins can access billing actions. - Preserve one
+login modal/page and the existing central AuthContext.
+
+============================================================ 12.
+SUBSCRIPTION ENTITLEMENTS AND QUOTAS
+============================================================
+
+Inspect the subscription plan definitions and quota middleware.
+
+Requirements: - Plan price, currency, billing interval, trial and
+feature entitlements must come from trusted server-side
+configuration/database. - Frontend may display plan information but
+cannot determine entitlements. - Enforce customer, catalogue, invoice,
+staff and premium-feature limits on the server. - Do not allow direct
+API requests to bypass limits. - Do not delete customer/business records
+on downgrade or expiry. - Expired or downgraded subscriptions must
+transition according to documented policy. - Provide a clear
+read-only/grace-period policy if selected; do not invent one silently. -
+Ensure the Free plan cannot access paid-only features by manipulating
+client state. - Ensure subscription renewal extends the correct tenant
+only after verified payment.
+
+============================================================ 13. AUDIT
+LOGGING, MONITORING AND INCIDENT SAFETY
+============================================================
+
+Implement safe structured security logs for: - Login failures and
+suspicious login patterns. - Session creation/revocation. - Permission
+denials. - Tenant access denials. - Staff/role changes. - Payment
+initialization. - Payment verification outcomes. - Invalid webhook
+signatures. - Duplicate webhook deliveries. - Amount/currency/reference
+mismatches. - Subscription activation, expiry, refund and reversal. -
+Admin actions and manual reconciliation.
+
+Do not log: - Passwords. - Session tokens. - Authorization headers. -
+Paystack secret keys. - Full card data. - Full sensitive
+customer/payment payloads.
+
+Add request correlation IDs. Keep production error responses generic.
+Ensure logs are useful for incident investigation without leaking
+secrets.
+
+============================================================ 14. TESTS —
+EXECUTE REAL SECURITY AND PAYMENT INTEGRATION TESTS
+============================================================
+
+Inspect package.json and all existing test scripts.
+
+The prior default npm test command did not include
+test/businessOS_integration.test.ts. Fix the test scripts so the
+Business OS integration/security suite is part of the standard CI test
+command.
+
+Add tests that call actual Express routes using an isolated test
+database or properly isolated test fixtures. Do not rely only on string
+assertions or hand-built SQL snippets.
+
+A. Authentication tests - Missing session -> 401. - Invalid session ->
+401. - Expired session -> 401. - Revoked session -> 401. - Disabled user
+-> 401/403. - Failed Neon session insert -> no token/session returned. -
+Client-supplied x-user-email cannot impersonate another user. -
+Client-supplied role/isAdmin cannot grant privilege.
+
+B. Tenant isolation tests - Tenant A cannot read Tenant B’s customer. -
+Tenant A cannot update/delete Tenant B’s customer. - Repeat for
+catalogue, invoice, invoice item, payment, staff, settings and
+subscription. - Changing tenant ID in request does not grant access. -
+Staff cannot perform owner-only actions. - Business Admin cannot access
+platform Super Admin endpoints. - Cross-tenant foreign-key references
+are rejected.
+
+C. Payment initialization tests - Unknown plan rejected. - Inactive plan
+rejected. - Client-supplied amount ignored/rejected. - Client-supplied
+currency cannot override server configuration. - Missing Paystack key
+fails closed. - Provider initialization failure leaves payment
+pending/failed, never paid. - Duplicate checkout request is handled
+idempotently. - No paid subscription becomes active at initialization.
+
+D. Verification tests - Fabricated reference rejected. - Unknown
+reference rejected. - Pending provider transaction does not activate
+plan. - Failed provider transaction does not activate plan. - Wrong
+amount rejected. - Wrong currency rejected. - Wrong reference
+rejected. - Wrong customer/tenant association rejected. - Valid success
+activates correct tenant once. - Repeated verification does not
+duplicate subscription or payment. - Callback query parameter claiming
+success is not trusted.
+
+E. Webhook tests - Missing signature rejected. - Invalid signature
+rejected. - Raw-body signature verification works. - Modified payload
+rejected. - Expired timestamp rejected if timestamped signature mode is
+used. - Valid Paystack event accepted. - Duplicate event is
+idempotent. - Replayed event cannot duplicate entitlement. - Event with
+wrong amount/currency/reference does not activate subscription. -
+Unrelated event acknowledged safely without granting access. - Database
+failure does not falsely acknowledge completed processing.
+
+F. CSRF/CORS/security-header tests - Missing/invalid CSRF token rejected
+on cookie-authenticated mutations. - Untrusted Origin rejected. -
+Wildcard credentialed CORS prohibited. - Required security headers
+present. - CSP does not unnecessarily permit unsafe-eval. - Oversized
+request rejected. - Rate limits work on login and payment
+initialization.
+
+G. Regression tests - Existing agency login still works. - Exactly one
+login modal/page remains. - Existing admin access remains
+role-protected. - Prospecting and website audit still function. -
+Business OS registration, onboarding and dashboard work. -
+Customers/catalogue/invoices/settings/billing UI remains functional. -
+Existing public website routes remain accessible.
+
+Use mocked Paystack HTTP responses for automated tests; never make real
+payments during automated tests. Add a clearly documented manual test
+using Paystack Test Mode.
+
+============================================================ 15. PACKAGE
+SCRIPTS, CI AND BUILD
+============================================================
+
+Inspect package.json, Vercel configuration and CI workflows.
+
+-   Ensure npm test runs the relevant existing regression tests and
+    Business OS integration/security tests.
+-   Ensure type-check runs TypeScript without emitting files.
+-   Ensure production build runs.
+-   Ensure migrations can be validated against a disposable test
+    database.
+-   Ensure secret scanning or a documented secret scan is included
+    before packaging.
+-   Do not include .env or secrets in generated ZIPs.
+-   Do not make test mode the production default.
+-   Do not allow a production build with placeholder secrets or insecure
+    authentication defaults.
+
+Execute actual commands, capture exit codes and fix failures introduced
+by your changes.
+
+============================================================ 16.
+PAYSTACK OWNER SETUP GUIDE — DO NOT INVENT KEYS
+============================================================
+
+After implementing code, provide the owner with exact setup
+instructions:
+
+1.  Create or access the Paystack business account.
+2.  Complete Paystack’s business verification/activation requirements.
+3.  In Paystack Dashboard, open Settings / API Keys & Webhooks.
+4.  Copy TEST public and secret keys into secure test environment
+    variables.
+5.  Configure the webhook URL to the deployed HTTPS endpoint, for
+    example: https://YOUR_DOMAIN/api/os/payments/paystack/webhook
+6.  Configure the exact webhook signing secret required by the Paystack
+    dashboard/integration mode.
+7.  Set the callback URL to the actual deployed Business OS
+    payment-return route.
+8.  Test initialization, successful payment, failed payment, abandoned
+    payment, duplicate webhook and verification.
+9.  Confirm payment records and subscription status in Neon.
+10. Only after test mode passes, obtain/enable live credentials in
+    Paystack and configure them as production-only Vercel environment
+    variables.
+11. Never paste live secrets into Google AI Studio prompts, source
+    files, chat, screenshots or ZIP archives.
+12. Confirm live webhook signature verification before accepting live
+    subscriptions.
+
+Do not ask the owner to share secret keys in chat.
+
+============================================================ 17.
+REQUIRED FINAL DELIVERY REPORT
+============================================================
+
+After implementation, return a factual report with:
+
+A. Summary - What was actually fixed. - What remains incomplete. -
+Whether any UI changes were necessary. Preserve the current UI unless a
+payment status/checkout state requires a small addition.
+
+B. Exact file list For every changed file, state: - Path. - Defect
+addressed. - Exact code-level change. - Security reason.
+
+C. Database - Migrations created/modified. - Tables, constraints,
+indexes and idempotency keys. - Whether migrations were run against a
+disposable test DB. - Whether production data remains untouched.
+
+D. Paystack - Initialize endpoint. - Verify endpoint. - Callback
+route. - Webhook route. - Signature validation method and header. -
+Amount/currency/reference checks. - Idempotency implementation. -
+Subscription activation rule. - Environment variable names only; never
+print values.
+
+E. Authentication - Session storage design. - Cookie attributes. - CSRF
+implementation. - Session revocation. - Tenant membership and roles. -
+Routes protected.
+
+F. Test evidence For each command/test, report exact command and
+PASS/FAIL/NOT RUN. Include: - TypeScript. - Production build. - npm
+test. - Business OS integration tests. - Tenant isolation. - Forged
+payment tests. - Webhook signature/idempotency. - CSRF/CORS. -
+Regression tests.
+
+G. Outstanding owner actions List any required Neon rotation, Vercel
+environment configuration, Paystack dashboard setup and manual Test Mode
+verification.
+
+H. Security limitations Never claim “100% secure”, “hack-proof” or “free
+from cyberattacks”. State what was tested, what was not tested and what
+still requires an independent penetration test.
+
+============================================================ 18. STRICT
+ACCEPTANCE GATES — DO NOT MARK COMPLETE UNTIL ALL PASS
+============================================================
+
+GATE 1 — Secrets: No populated .env, database password, session secret,
+Paystack secret or private key exists in source, ZIP or frontend bundle.
+Exposed credentials have been rotated by the owner.
+
+GATE 2 — Authentication: No session is issued if persistent session
+storage fails. Invalid, expired and revoked sessions are rejected.
+Browser JavaScript cannot read the production session token.
+
+GATE 3 — Authorization: Every protected Business OS route verifies
+authenticated identity, tenant membership and role on the server.
+Cross-tenant access tests pass.
+
+GATE 4 — Payment: Registration and upgrade cannot activate a paid plan
+without verified Paystack payment. Amount, currency, reference, customer
+and tenant are checked against server-side pending records.
+
+GATE 5 — Webhook: Raw-body signature validation is correct for the
+configured Paystack signing mode. Invalid signatures are rejected.
+Duplicate/replayed events cannot duplicate payments or subscriptions.
+
+GATE 6 — CSRF and HTTP security: State-changing cookie-authenticated
+endpoints enforce CSRF protection. CORS is allowlisted. Security headers
+and rate limits are verified.
+
+GATE 7 — Data integrity: Payment/subscription updates are transactional
+and idempotent. Tenant-scoped foreign keys and constraints prevent
+cross-tenant references.
+
+GATE 8 — Regression: Existing Avartah agency features and Business OS
+screens remain functional. No duplicate login UI is introduced.
+
+GATE 9 — Build and tests: TypeScript, production build, default test
+suite and required integration/security tests actually execute and pass.
+
+GATE 10 — Deployment: Test Mode has been verified. Live keys are
+configured only by the owner in Vercel. Production webhook has been
+tested successfully. No live launch claim is made before these steps.
+
+FINAL COMMAND: IMPLEMENT THESE CHANGES IN THE ACTUAL ZIP14 PROJECT NOW.
+Do not stop at an audit or plan. Do not fake successful payment or
+tests. Preserve existing UI and working functionality. If a test cannot
+be run because credentials, database access or provider setup are
+unavailable, report it as NOT RUN and give the exact owner action
+required.

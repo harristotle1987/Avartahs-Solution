@@ -1,83 +1,89 @@
-
 import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { FileText, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import { ArrowLeft, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 const TermsOfService: React.FC = () => {
-  const navigate = useNavigate();
-
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
   return (
-    <div className="min-h-screen bg-white text-[#0F172A] selection:bg-electric/10 selection:text-electric font-sans">
-      <nav className="fixed top-0 left-0 w-full z-50 py-6 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 md:px-12">
-        <div className="max-w-[1450px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <span className="text-2xl font-[900] tracking-[-0.08em] text-[#0F172A]">AVARTAH</span>
-            <div className="w-2.5 h-2.5 bg-sunset rounded-full" />
-          </div>
-          <button 
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-sunset transition-colors"
+    <div className="min-h-screen bg-white dark:bg-[#111315] text-slate-900 dark:text-[#F2F1ED] font-sans selection:bg-[#C58A52]/20 selection:text-[#C58A52]">
+      <Helmet>
+        <title>Terms of Service | Avartah Solutions</title>
+        <meta name="description" content="Avartah Solutions commercial engagement and service terms." />
+      </Helmet>
+
+      <Navbar />
+
+      <main className="pt-28 pb-24 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+        <div className="mb-8">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 dark:text-[#747C84] dark:hover:text-[#F2F1ED] transition-colors"
           >
-            <ArrowLeft size={14} /> Back to Protocol
-          </button>
+            <ArrowLeft size={13} />
+            <span>Return to Home</span>
+          </Link>
         </div>
-      </nav>
 
-      <main className="pt-40 pb-24 px-6 md:px-12 max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="flex items-center gap-4 mb-12">
-            <div className="p-4 bg-slate-50 text-[#0F172A] rounded-2xl border border-slate-100 shadow-sm">
-              <FileText size={32} />
-            </div>
-            <div>
-              <h1 className="text-4xl md:text-6xl font-[900] tracking-tighter uppercase leading-none">Service Logic Terms</h1>
-              <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest mt-2">Legal Protocol v2.1</p>
-            </div>
+        <div className="p-8 sm:p-10 rounded-lg bg-slate-50 dark:bg-[#171A1D] border border-slate-200 dark:border-[#30363B] mb-12">
+          <div className="flex items-center gap-2.5 text-xs text-[#C58A52] font-semibold uppercase tracking-wider mb-3">
+            <FileText size={16} />
+            <span>Commercial Engagement Agreement</span>
           </div>
 
-          <div className="prose prose-slate max-w-none space-y-12">
-            <section>
-              <h2 className="text-2xl font-black uppercase tracking-tight mb-4">1. Engagement Framework</h2>
-              <p className="text-slate-500 font-medium leading-relaxed">
-                The forensic growth audit provided by Avartah Solutions is a strategic assessment and does not constitute a guaranteed revenue outcome. All engineering rebuilds are performed under individual Statements of Work (SOW) which define specific technical deliverables and KPIs.
-              </p>
-            </section>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-[#F2F1ED] mb-3">
+            Terms of Service & Engagement
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-[#747C84]">
+            Effective Date: October 2026 · Version 2.2
+          </p>
+        </div>
 
-            <section>
-              <h2 className="text-2xl font-black uppercase tracking-tight mb-4">2. Intellectual Property Nodes</h2>
-              <p className="text-slate-500 font-medium leading-relaxed">
-                Upon final payment for any rebuild project, 100% of the developed logic layer and design assets are transferred to the client. Avartah Solutions retains the right to utilize generic architectural patterns and proprietary internal frameworks developed independently of specific client engagements.
-              </p>
-            </section>
+        <div className="space-y-8 text-xs sm:text-sm text-slate-600 dark:text-[#A3A9AF] leading-relaxed">
+          <section className="space-y-2">
+            <h2 className="text-base font-bold text-slate-900 dark:text-[#F2F1ED]">
+              1. Engagement Framework & Statements of Work
+            </h2>
+            <p>
+              All software engineering, digital transformation, and website redesign projects undertaken by Avartah Solutions are governed by agreed sprint scopes and technical Statements of Work (SOW). Each milestone outlines specific architectural deliverables, test requirements, and acceptance standards.
+            </p>
+          </section>
 
-            <section>
-              <h2 className="text-2xl font-black uppercase tracking-tight mb-4">3. Performance Thresholds</h2>
-              <p className="text-slate-500 font-medium leading-relaxed">
-                While we target 100/100 Lighthouse scores and sub-second rendering, these metrics are subject to third-party scripts and external integrations (tracking pixels, chatbots, etc.) that the client may choose to implement post-launch.
-              </p>
-            </section>
+          <section className="space-y-2">
+            <h2 className="text-base font-bold text-slate-900 dark:text-[#F2F1ED]">
+              2. Intellectual Property & Code Ownership
+            </h2>
+            <p>
+              Upon receipt of final milestone payments, complete intellectual property rights for custom frontend repositories, backend routes, database schema designs, and bespoke business algorithms transfer unconditionally to the client.
+            </p>
+          </section>
 
-            <section>
-              <h2 className="text-2xl font-black uppercase tracking-tight mb-4">4. Liability Limitation</h2>
-              <p className="text-slate-500 font-medium leading-relaxed">
-                Avartah Solutions is not liable for indirect, incidental, or consequential damages resulting from the implementation of our strategic audits or engineering builds. Our liability is limited to the fees paid for the specific engagement in question.
-              </p>
-            </section>
-          </div>
-        </motion.div>
+          <section className="space-y-2">
+            <h2 className="text-base font-bold text-slate-900 dark:text-[#F2F1ED]">
+              3. Performance & Delivery Benchmarks
+            </h2>
+            <p>
+              We engineer web applications to meet Core Web Vitals standards, targeting fast load times and clean architectural patterns. Post-launch modifications made by third-party scripts or customer content changes are not covered by initial sprint guarantees unless retained under ongoing maintenance agreements.
+            </p>
+          </section>
+
+          <section className="space-y-2">
+            <h2 className="text-base font-bold text-slate-900 dark:text-[#F2F1ED]">
+              4. Governing Law & Dispute Resolution
+            </h2>
+            <p>
+              These terms are construed in accordance with the commercial laws of Nigeria and applicable international commercial standards. Any formal inquiries or disputes should be directed to our operations desk at <a href="mailto:harristotle84@gmail.com" className="text-[#C58A52] hover:underline">harristotle84@gmail.com</a>.
+            </p>
+          </section>
+        </div>
       </main>
-      
-      <footer className="py-12 border-t border-slate-100 text-center">
-        <p className="text-slate-300 font-black text-[9px] uppercase tracking-[0.4em]">© AVARTAH SOLUTIONS LEGAL OPERATIONS</p>
-      </footer>
+
+      <Footer />
     </div>
   );
 };

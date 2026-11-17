@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Target, Eye, Microscope, Fingerprint, X, ChevronRight, Activity, Shield, Zap as SpeedIcon, Search } from 'lucide-react';
 import { Link as ScrollLink } from 'react-scroll';
 import { SectionId } from '../types';
+import { Zap, Target, Search, BarChart3, X, ChevronRight } from 'lucide-react';
 
 const nodes = [
   { 
     id: 'speed', 
     title: 'Speed Analysis', 
-    icon: <Zap size={20} />, 
+    icon: Zap,
     x: '15%', 
     y: '20%',
     description: 'Deep-dive into Core Web Vitals and server response times. We identify bottlenecks that cause user bounce and kill conversions.',
@@ -24,7 +24,7 @@ const nodes = [
   { 
     id: 'heatmap', 
     title: 'Heatmap Tracking', 
-    icon: <Eye size={20} />, 
+    icon: BarChart3,
     x: '85%', 
     y: '25%',
     description: 'Visualizing user friction through click maps and scroll depth analysis. We see exactly where users get stuck or lose interest.',
@@ -39,7 +39,7 @@ const nodes = [
   { 
     id: 'seo', 
     title: 'SEO Forensics', 
-    icon: <Microscope size={20} />, 
+    icon: Search,
     x: '10%', 
     y: '75%',
     description: 'Technical SEO audit that goes beyond keywords. We analyze crawlability, indexability, and semantic structure.',
@@ -54,7 +54,7 @@ const nodes = [
   { 
     id: 'ux', 
     title: 'UX/UI Logic', 
-    icon: <Fingerprint size={20} />, 
+    icon: Target,
     x: '80%', 
     y: '80%',
     description: 'Analyzing the psychological flow of your interface. We ensure every element serves a purpose in the conversion journey.',
@@ -83,15 +83,15 @@ const TechToolbox: React.FC = () => {
   }, [selectedNode]);
 
   return (
-    <div className="py-20 flex flex-col items-center">
-      <div className="relative w-full max-w-4xl h-[500px] mb-20 flex items-center justify-center">
+    <div className="py-12 flex flex-col items-center">
+      <div className="relative w-full max-w-4xl h-[480px] mb-12 flex items-center justify-center">
         {/* Background Grid/Lines */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
+        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-30">
           <defs>
             <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#3B82F6" stopOpacity="0" />
-              <stop offset="50%" stopColor="#3B82F6" stopOpacity="1" />
-              <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
+              <stop offset="0%" stopColor="#C58A52" stopOpacity="0" />
+              <stop offset="50%" stopColor="#C58A52" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#C58A52" stopOpacity="0" />
             </linearGradient>
           </defs>
           {nodes.map((node) => (
@@ -105,7 +105,7 @@ const TechToolbox: React.FC = () => {
               strokeWidth="2"
               initial={{ pathLength: 0 }}
               whileInView={{ pathLength: 1 }}
-              transition={{ duration: 1.5, ease: "easeInOut" }}
+              transition={{ duration: 1.2, ease: "easeInOut" }}
             />
           ))}
         </svg>
@@ -114,129 +114,106 @@ const TechToolbox: React.FC = () => {
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           whileInView={{ scale: 1, opacity: 1 }}
-          className="relative z-10 glass-effect p-8 rounded-full border-electric/30 glow-blue text-center animate-float"
+          className="relative z-10 p-8 rounded-full bg-white/80 dark:bg-[#171A1D]/80 backdrop-blur-2xl border border-[#C58A52]/40 shadow-[0_16px_40px_rgba(197,138,82,0.15)] text-center animate-ambient"
         >
-          <div className="w-20 h-20 bg-electric/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-electric/50">
-            <Target className="text-electric" size={40} />
+          <div className="w-16 h-16 bg-[#C58A52]/15 rounded-full flex items-center justify-center mx-auto mb-3 border border-[#C58A52]/30">
+            <Zap className="w-8 h-8 text-[#C58A52]" />
           </div>
-          <h4 className="text-white font-black tracking-tight text-xl">The Avartah<br/>Audit Stack</h4>
+          <h4 className="text-slate-900 dark:text-[#F2F1ED] font-bold tracking-tight text-lg leading-tight">The Avartah<br/>Audit Stack</h4>
         </motion.div>
 
         {/* Satellite Nodes */}
-        {nodes.map((node, i) => (
-          <motion.div
-            key={node.id}
-            initial={{ opacity: 0, scale: 0.5 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.2 }}
-            style={{ left: node.x, top: node.y }}
-            onClick={() => setSelectedNode(node)}
-            className="absolute -translate-x-1/2 -translate-y-1/2 glass-effect px-6 py-4 rounded-2xl flex items-center gap-4 border-white/10 group cursor-pointer hover:border-electric/50 transition-all duration-500 hover:scale-110 z-20"
-          >
-            <div className="p-2 rounded-xl bg-white/5 text-muted group-hover:text-electric transition-colors">
-              {node.icon}
-            </div>
-            <span className="text-white font-bold whitespace-nowrap text-sm tracking-wide">
-              {node.title}
-            </span>
-            <div className="w-2 h-2 rounded-full bg-electric/50 animate-pulse ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-          </motion.div>
-        ))}
+        {nodes.map((node, i) => {
+          const NodeIcon = node.icon;
+          return (
+            <motion.div
+              key={`tech-node-${node.id || 'node'}-${i}`}
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.15 }}
+              whileHover={{ scale: 1.05 }}
+              style={{ left: node.x, top: node.y }}
+              onClick={() => setSelectedNode(node)}
+              className="absolute -translate-x-1/2 -translate-y-1/2 px-5 py-3.5 rounded-2xl flex items-center gap-3 border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-[#171A1D]/80 backdrop-blur-xl shadow-lg hover:border-[#C58A52] cursor-pointer transition-all duration-300 z-20 group"
+            >
+              <div className="p-2 rounded-xl bg-[#C58A52]/10 text-[#C58A52] group-hover:bg-[#C58A52] group-hover:text-[#111315] transition-colors">
+                <NodeIcon size={18} />
+              </div>
+              <span className="text-slate-900 dark:text-[#F2F1ED] font-semibold whitespace-nowrap text-xs tracking-wide">
+                {node.title}
+              </span>
+              <div className="w-2 h-2 rounded-full bg-[#C58A52] animate-pulse ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Node Detail Modal */}
       <AnimatePresence>
         {selectedNode && (
-          <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 md:p-8">
+          <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedNode(null)}
-              className="absolute inset-0 bg-midnight/90 backdrop-blur-xl"
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
             />
             
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#0F172A] border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              className="relative w-full max-w-xl bg-white/90 dark:bg-[#171A1D]/90 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl z-10 max-h-[80vh] overflow-y-auto"
             >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-electric to-sunset z-30" />
-              
-              <div className="p-8 md:p-12 overflow-y-auto custom-scrollbar">
-                <div className="flex justify-between items-start mb-10">
-                  <div className="flex items-center gap-6">
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center bg-white/5 ${selectedNode.color === 'electric' ? 'text-electric' : 'text-sunset'} border border-white/10`}>
-                      {selectedNode.icon}
-                    </div>
-                    <div>
-                      <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${selectedNode.color === 'electric' ? 'text-electric' : 'text-sunset'}`}>
-                        Technical Module
-                      </p>
-                      <h3 className="text-3xl font-black text-white tracking-tighter uppercase">
-                        {selectedNode.title}
-                      </h3>
-                    </div>
+              <div className="flex justify-between items-start mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#C58A52]/15 border border-[#C58A52]/30 flex items-center justify-center text-[#C58A52]">
+                    <selectedNode.icon size={24} />
                   </div>
-                  <button
-                    onClick={() => setSelectedNode(null)}
-                    className="p-3 rounded-full hover:bg-white/5 text-slate-400 transition-colors group"
-                    title="Exit Module"
-                  >
-                    <X size={24} className="group-hover:rotate-90 transition-transform" />
-                  </button>
-                </div>
-
-                <div className="space-y-8">
-                  <p className="text-slate-400 text-lg leading-relaxed font-medium">
-                    {selectedNode.description}
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {selectedNode.details.map((detail, idx) => (
-                      <div key={idx} className="flex items-center gap-3 p-4 rounded-xl bg-white/[0.02] border border-white/5">
-                        <div className={`w-1.5 h-1.5 rounded-full ${selectedNode.color === 'electric' ? 'bg-electric' : 'bg-sunset'}`} />
-                        <span className="text-white font-bold text-sm tracking-tight">{detail}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row gap-4 items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex -space-x-2">
-                        {[1, 2, 3].map(i => (
-                          <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0F172A] bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white">
-                            {String.fromCharCode(64 + i)}
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                        Active in 14+ Audits
-                      </p>
-                    </div>
-                    
-                    <button 
-                      onClick={() => setSelectedNode(null)}
-                      className={`w-full md:w-auto px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-                        selectedNode.color === 'electric' 
-                          ? 'bg-electric text-white hover:bg-electric/90' 
-                          : 'bg-sunset text-white hover:bg-sunset/90'
-                      }`}
-                    >
-                      <X size={14} /> Exit Module
-                    </button>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#C58A52]">Technical Diagnostic Module</span>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-[#F2F1ED]">{selectedNode.title}</h3>
                   </div>
                 </div>
+                <button
+                  onClick={() => setSelectedNode(null)}
+                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#202428] text-slate-500 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-[#A3A9AF] leading-relaxed mb-6">
+                {selectedNode.description}
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                {selectedNode.details.map((detail, dIdx) => (
+                  <div key={`node-detail-${selectedNode.id}-${dIdx}`} className="p-3 rounded-xl bg-slate-50/80 dark:bg-[#111315]/80 border border-slate-100 dark:border-white/5 flex items-center gap-2.5 text-xs text-slate-800 dark:text-[#F2F1ED] font-medium">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#C58A52] shrink-0" />
+                    <span>{detail}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between">
+                <span className="text-xs text-slate-500">Avartah Audit Specification</span>
+                <button
+                  onClick={() => setSelectedNode(null)}
+                  className="px-4 py-2 bg-[#C58A52] hover:bg-[#D99B62] text-[#111315] font-semibold text-xs rounded-xl transition-colors"
+                >
+                  Close Specification
+                </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Interchangeable CTA #2 */}
+      {/* CTA */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         whileInView={{ opacity: 1, y: 0 }}
         className="text-center"
       >
@@ -244,12 +221,13 @@ const TechToolbox: React.FC = () => {
           to={SectionId.Audit}
           smooth={true}
           offset={-100}
-          className="inline-flex items-center gap-3 px-10 py-5 bg-sunset hover:bg-sunset/90 text-white rounded-2xl font-black text-xl transition-all transform hover:scale-105 active:scale-95 glow-orange cursor-pointer mb-4"
+          className="inline-flex items-center gap-2.5 px-8 py-4 bg-[#C58A52] hover:bg-[#D99B62] text-[#111315] rounded-xl font-bold text-xs transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-[#C58A52]/20 cursor-pointer mb-2"
         >
-          Show Me What’s Broken
+          <span>Run Forensic Audit Diagnostic</span>
+          <ChevronRight size={16} />
         </ScrollLink>
-        <p className="text-muted text-sm font-medium opacity-60">
-          No credit card required. Pure technical insight.
+        <p className="text-xs text-slate-500 dark:text-[#747C84]">
+          No credit card required · Instant technical insight
         </p>
       </motion.div>
     </div>
