@@ -84,19 +84,21 @@ Avartah Solutions is an enterprise-grade agency and business management platform
 
 See `.env.example` for the full annotated specification:
 
-| Variable | Scope | Description |
-| :--- | :--- | :--- |
-| `DATABASE_URL` | Server Only | Neon PostgreSQL connection string (pooled recommended) |
-| `SESSION_SECRET` | Server Only | Cryptographic secret for signing session cookies (minimum 32 characters) |
-| `APP_BASE_URL` | Server Only | Canonical URL of the deployment (e.g., `https://avartah.vercel.app`) |
-| `ALLOWED_ORIGINS` | Server Only | Comma-separated list of allowed CORS origins |
-| `PAYSTACK_SECRET_KEY` | Server Only | Paystack live/test secret key (`sk_live_...` or `sk_test_...`) |
-| `VITE_PAYSTACK_PUBLIC_KEY` | Client Safe | Paystack public key for frontend inline checkout (`pk_live_...` or `pk_test_...`) |
-| `PAYSTACK_MODE` | Server Only | `live` or `test` |
-| `PAYMENT_CURRENCY` | Server Only | Standard currency code (`NGN`) |
-| `PAYSTACK_CALLBACK_URL` | Server Only | Authorized return URL for Paystack redirect |
-| `GEMINI_API_KEY` | Server Only | Google Gemini API key for smart business operations |
-| `RESEND_API_KEY` | Server Only | Optional email provider API key |
+| Variable | Scope | Required in Prod | Description |
+| :--- | :--- | :--- | :--- |
+| `DATABASE_URL` | Server Only | **Yes** | Neon PostgreSQL **pooled** (`-pooler`) connection string with `?sslmode=require` |
+| `SESSION_SECRET` | Server Only | **Yes** | Cryptographic secret for signing/validating session & CSRF tokens (minimum 32 chars; generate with `openssl rand -hex 32`) |
+| `APP_BASE_URL` | Server Only | **Yes** | Canonical deployment URL (e.g., `https://avartahs-solution.vercel.app`) |
+| `ALLOWED_ORIGINS` | Server Only | **Yes** | Comma-separated list of allowed CORS origins |
+| `PAYSTACK_MODE` | Server Only | Billing Only | `live` or `test` (required only for Paystack payment endpoints) |
+| `PAYSTACK_SECRET_KEY` | Server Only | Billing Only | Paystack `sk_live_...` or `sk_test_...` matching `PAYSTACK_MODE` |
+| `VITE_PAYSTACK_PUBLIC_KEY` | Client Safe | Billing Only | Paystack public key (`pk_live_...` or `pk_test_...`) matching `PAYSTACK_MODE` |
+| `PAYSTACK_CALLBACK_URL` | Server Only | Billing Only | Authorized HTTPS return URL (`https://avartahs-solution.vercel.app/api/os/payments/paystack/callback`) |
+| `PAYMENT_CURRENCY` | Server Only | Optional | 3-letter ISO billing currency (`NGN` default) |
+| `GEMINI_API_KEY` | Server Only | Optional | Google Gemini API key for AI features |
+| `RESEND_API_KEY` | Server Only | Optional | Email provider API key |
+
+> **Security note:** Never prefix `SESSION_SECRET`, `DATABASE_URL`, or `PAYSTACK_SECRET_KEY` with `VITE_`. In Vercel Production, authentication routes fail closed (`503`) if `SESSION_SECRET` is missing or shorter than 32 characters; missing Paystack configuration disables only payment endpoints (`503`) without blocking core app routes.
 
 ---
 
@@ -118,7 +120,7 @@ npm run test:security
 npm run test:integration
 
 # Type check
-npm run type-check
+npm run typecheck
 
 # Production build
 npm run build
@@ -129,18 +131,16 @@ npm run build
 ## 🚀 Deployment (Vercel & Node.js)
 
 For Vercel deployment:
-1. Link repository to Vercel.
-2. In Project Settings > Environment Variables, configure:
-   - `DATABASE_URL`
-   - `SESSION_SECRET` (generate with `openssl rand -hex 32`)
-   - `PAYSTACK_SECRET_KEY`
-   - `VITE_PAYSTACK_PUBLIC_KEY`
-   - `PAYSTACK_CALLBACK_URL` (`https://<YOUR_APP_DOMAIN>/api/os/payments/paystack/callback`)
-   - `APP_BASE_URL` (set to your production domain)
-   - `ALLOWED_ORIGINS`
+1. Link repository to Vercel (`avartahs-solution`).
+2. In **Vercel Project Settings -> Environment Variables (Production)**, configure:
+   - `DATABASE_URL`: Neon **pooled** (`-pooler`) URL ending in `?sslmode=require`
+   - `SESSION_SECRET`: 64-char hex secret generated via `openssl rand -hex 32` (minimum 32 characters)
+   - `APP_BASE_URL`: `https://avartahs-solution.vercel.app`
+   - `ALLOWED_ORIGINS`: `https://avartahs-solution.vercel.app,https://avartahs-solution-git-main-avartahs-projects.vercel.app`
+   - Optional (to enable Paystack billing): `PAYSTACK_MODE`, `PAYSTACK_SECRET_KEY`, `VITE_PAYSTACK_PUBLIC_KEY`, `PAYSTACK_CALLBACK_URL`, `PAYMENT_CURRENCY`
 3. Configure the Paystack Dashboard Webhook URL (kept separate from the callback URL):
    - Webhook URL: `https://<YOUR_APP_DOMAIN>/api/os/payments/paystack/webhook`
-4. Deploy with `npm run build`.
+4. Deploy with `npm run build`. On first request/boot, idempotent migrations in `lib/migrations.ts` (including `033_site_analytics_schema_reconciliation`) reconcile schema state automatically without dropping or overwriting existing rows.
 
 ---
 

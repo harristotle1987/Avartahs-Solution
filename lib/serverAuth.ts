@@ -21,38 +21,121 @@ export interface TenantMembership {
 export const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const COOKIE_NAME = 'admin_session';
 
-let cachedSessionSecret: string | null = process.env.SESSION_SECRET || null;
+export class AuthConfigurationError extends Error {
+  readonly code = 'AUTH_CONFIGURATION_ERROR';
+  readonly statusCode = 503;
 
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthConfigurationError';
+  }
+}
+
+export function isAuthConfigurationError(err: unknown): boolean {
+  return (
+    err instanceof AuthConfigurationError ||
+    (err as any)?.code === 'AUTH_CONFIGURATION_ERROR' ||
+    (err as any)?.name === 'AuthConfigurationError'
+  );
+}
+
+function isPlaceholderSessionSecret(val: string): boolean {
+  const normalized = val.trim().toLowerCase();
+  return (
+    normalized.includes('replace_with_your_actual') ||
+    normalized.includes('your_minimum_32_characters') ||
+    normalized.includes('change-me') ||
+    normalized.includes('change_me') ||
+    normalized.includes('placeholder') ||
+    normalized === 'changeme'
+  );
+}
+
+let nonProdCachedSecret: string | null = null;
+let nonProdProcessFallbackSecret: string | null = null;
+
+/**
+ * Resolves the canonical HMAC-SHA256 session signing and validation secret.
+ *
+ * Production rules (NODE_ENV === 'production'):
+ * - Must come strictly from process.env.SESSION_SECRET (>= 32 non-whitespace chars, non-placeholder).
+ * - Never cached across env changes, never reads system_settings DB fallback,
+ *   never generates an ephemeral startup secret, never uses dev fallback constants.
+ * - Throws AuthConfigurationError so auth operations fail closed cleanly.
+ *
+ * Non-production rules:
+ * - Prefers process.env.SESSION_SECRET if >= 32 chars.
+ * - Otherwise loads/creates a synchronized secret in system_settings (ON CONFLICT DO NOTHING).
+ * - Falls back to a single process-scoped secret only if DB is unavailable in dev/test.
+ */
 export async function getSessionSecret(): Promise<string> {
-  if (cachedSessionSecret && cachedSessionSecret.length >= 32) {
-    return cachedSessionSecret;
+  const isProd = process.env.NODE_ENV === 'production';
+  const rawEnvSecret = typeof process.env.SESSION_SECRET === 'string' ? process.env.SESSION_SECRET : '';
+  const trimmedEnvSecret = rawEnvSecret.trim();
+  const hasValidEnvSecret = trimmedEnvSecret.length >= 32 && !isPlaceholderSessionSecret(rawEnvSecret);
+
+  if (isProd) {
+    if (!hasValidEnvSecret) {
+      throw new AuthConfigurationError(
+        'A strong SESSION_SECRET (minimum 32 characters) must be configured in environment variables for production.'
+      );
+    }
+    return rawEnvSecret;
   }
-  if (process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 32) {
-    cachedSessionSecret = process.env.SESSION_SECRET;
-    return cachedSessionSecret;
+
+  if (hasValidEnvSecret) {
+    nonProdCachedSecret = rawEnvSecret;
+    return rawEnvSecret;
   }
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('FATAL: A strong SESSION_SECRET (minimum 32 characters) must be configured in environment variables for production.');
+
+  if (nonProdCachedSecret && nonProdCachedSecret.trim().length >= 32) {
+    return nonProdCachedSecret;
   }
+
   try {
     const secretRes = await pool.query("SELECT value FROM system_settings WHERE key = 'SESSION_SECRET'");
-    if (secretRes.rows.length > 0 && secretRes.rows[0].value?.length >= 32) {
-      cachedSessionSecret = secretRes.rows[0].value;
-    } else {
-      const generatedSecret = crypto.randomBytes(32).toString('hex'); // 64 chars hex
-      await pool.query(
-        "INSERT INTO system_settings (key, value) VALUES ('SESSION_SECRET', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
-        [generatedSecret]
-      );
-      const recheck = await pool.query("SELECT value FROM system_settings WHERE key = 'SESSION_SECRET'");
-      cachedSessionSecret = recheck.rows.length > 0 ? recheck.rows[0].value : generatedSecret;
+    if (secretRes.rows.length > 0 && typeof secretRes.rows[0].value === 'string' && secretRes.rows[0].value.trim().length >= 32) {
+      nonProdCachedSecret = secretRes.rows[0].value;
+      return nonProdCachedSecret!;
     }
+
+    const generatedSecret = crypto.randomBytes(32).toString('hex'); // 64 chars hex
+    await pool.query(
+      "INSERT INTO system_settings (key, value) VALUES ('SESSION_SECRET', $1) ON CONFLICT (key) DO NOTHING",
+      [generatedSecret]
+    );
+    const recheck = await pool.query("SELECT value FROM system_settings WHERE key = 'SESSION_SECRET'");
+    const resolved =
+      recheck.rows.length > 0 && typeof recheck.rows[0].value === 'string' && recheck.rows[0].value.trim().length >= 32
+        ? recheck.rows[0].value
+        : generatedSecret;
+    nonProdCachedSecret = resolved;
+    return resolved;
   } catch (err: any) {
-    console.error('[Session Secret Error]:', err.message || err);
-    // Safe dev/test fallback meeting strict 256-bit requirement
-    cachedSessionSecret = 'avartah_secure_dev_session_secret_key_32_characters_minimum_entropy';
+    console.warn('[Session Secret Dev Notice]: DB secret lookup unavailable in non-production:', err?.message || err);
+    if (!nonProdProcessFallbackSecret) {
+      nonProdProcessFallbackSecret = crypto.randomBytes(32).toString('hex');
+    }
+    nonProdCachedSecret = nonProdProcessFallbackSecret;
+    return nonProdCachedSecret;
   }
-  return cachedSessionSecret || 'avartah_secure_dev_session_secret_key_32_characters_minimum_entropy';
+}
+
+export function extractTrustedClientIp(req?: Request): string {
+  if (!req) return '';
+  const vercelIp = req.headers['x-vercel-ip'];
+  if (typeof vercelIp === 'string' && vercelIp.trim()) return vercelIp.trim();
+
+  const realIp = req.headers['x-real-ip'];
+  if (typeof realIp === 'string' && realIp.trim()) return realIp.trim();
+
+  const forwardedFor = req.headers['x-forwarded-for'];
+  if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
+    const first = forwardedFor.split(',')[0].trim();
+    if (first) return first;
+  }
+
+  return req.socket?.remoteAddress || req.ip || '127.0.0.1';
 }
 
 export async function createSession(email: string, role: string = 'user', req?: Request): Promise<string> {
@@ -60,7 +143,7 @@ export async function createSession(email: string, role: string = 'user', req?: 
   const sessionId = crypto.randomBytes(24).toString('hex');
   const createdAt = Date.now();
   const expiresAt = createdAt + SESSION_TTL_MS;
-  const ip = req ? (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || '' : '';
+  const ip = extractTrustedClientIp(req);
   const ua = (req?.headers['user-agent'] as string) || '';
 
   const payload = JSON.stringify({ sid: sessionId, email: email.toLowerCase().trim(), role, exp: expiresAt, iat: createdAt });
@@ -83,7 +166,7 @@ export async function createSession(email: string, role: string = 'user', req?: 
       [sessionId, email.toLowerCase().trim(), role, createdAt, expiresAt, ip, ua, tokenHash]
     );
   } catch (err: any) {
-    console.error('[Session Store Error]: Failed to persist session in database:', err.message || err);
+    console.error('[Session Store Error]: Failed to persist session in database:', err?.message || err);
     throw new Error('Database authentication service unavailable: session creation failed closed.');
   }
 
@@ -91,8 +174,8 @@ export async function createSession(email: string, role: string = 'user', req?: 
 }
 
 export async function validateSession(token: string | undefined): Promise<SessionData | null> {
-  if (!token || typeof token !== 'string') return null;
   const secret = await getSessionSecret();
+  if (!token || typeof token !== 'string') return null;
 
   const parts = token.trim().split('.');
   if (parts.length < 2) return null;
@@ -178,22 +261,86 @@ export async function revokeSession(token: string | undefined): Promise<void> {
 /**
  * Express middleware to authenticate user via session cookie or Authorization header.
  * Attaches verified SessionData to `req.user`.
+ * Fails closed with 503 if production SESSION_SECRET is missing or weak.
  */
 export async function requireUserAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const rawToken = req.cookies?.[COOKIE_NAME] || req.headers.authorization?.replace(/^Bearer\s+/i, '');
-  if (!rawToken) {
-    res.status(401).json({ error: 'Unauthorized: Authentication required. Please sign in.' });
-    return;
-  }
+  try {
+    // Always enforce fail-closed secret availability in production before auth proceeds
+    if (process.env.NODE_ENV === 'production') {
+      await getSessionSecret();
+    }
 
-  const session = await validateSession(rawToken);
-  if (!session) {
-    res.status(401).json({ error: 'Unauthorized: Session invalid or expired. Please sign in again.' });
-    return;
-  }
+    const rawToken = req.cookies?.[COOKIE_NAME] || req.headers.authorization?.replace(/^Bearer\s+/i, '');
+    if (!rawToken) {
+      res.status(401).json({ error: 'Unauthorized: Authentication required. Please sign in.' });
+      return;
+    }
 
-  (req as any).user = session;
-  next();
+    const session = await validateSession(rawToken);
+    if (!session) {
+      res.status(401).json({ error: 'Unauthorized: Session invalid or expired. Please sign in again.' });
+      return;
+    }
+
+    (req as any).user = session;
+    next();
+  } catch (err: any) {
+    if (isAuthConfigurationError(err)) {
+      console.error('[Auth Configuration Alert]:', err.message);
+      res.status(503).json({
+        success: false,
+        errorCode: 'AUTH_UNAVAILABLE',
+        error: 'Authentication service is temporarily unavailable.'
+      });
+      return;
+    }
+    res.status(500).json({ error: 'Authentication verification failed.' });
+  }
+}
+
+/**
+ * Express middleware to authenticate platform administrators (`role === 'admin'`).
+ * Attaches verified SessionData to both `req.adminUser` and `req.user`.
+ * Fails closed with 503 if production SESSION_SECRET is missing or weak.
+ */
+export async function requireAdminAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (process.env.NODE_ENV === 'production') {
+      await getSessionSecret();
+    }
+
+    const rawToken = req.cookies?.[COOKIE_NAME] || req.headers.authorization?.replace(/^Bearer\s+/i, '');
+    if (!rawToken) {
+      res.status(401).json({ error: 'Unauthorized: Admin authentication required.' });
+      return;
+    }
+
+    const session = await validateSession(rawToken);
+    if (!session) {
+      res.status(401).json({ error: 'Session invalid or expired. Please log in again.' });
+      return;
+    }
+
+    if (session.role !== 'admin') {
+      res.status(403).json({ error: 'Forbidden: Administrator privileges required.' });
+      return;
+    }
+
+    (req as any).adminUser = session;
+    (req as any).user = session;
+    next();
+  } catch (err: any) {
+    if (isAuthConfigurationError(err)) {
+      console.error('[Auth Configuration Alert]:', err.message);
+      res.status(503).json({
+        success: false,
+        errorCode: 'AUTH_UNAVAILABLE',
+        error: 'Authentication service is temporarily unavailable.'
+      });
+      return;
+    }
+    res.status(500).json({ error: 'Authentication verification failed.' });
+  }
 }
 
 /**

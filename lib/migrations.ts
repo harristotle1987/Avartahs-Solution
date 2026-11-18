@@ -1,12 +1,12 @@
 import pool from './neon.js';
 
-interface Migration {
+export interface Migration {
   id: string;
   description: string;
   sql: string;
 }
 
-const MIGRATIONS: Migration[] = [
+export const MIGRATIONS: Migration[] = [
   {
     id: '001_core_accounts_and_sessions',
     description: 'Create admin_users, users, admin_sessions, and system_settings tables',
@@ -1538,8 +1538,145 @@ const MIGRATIONS: Migration[] = [
       WHERE h.prospect_id = p.id
         AND (h.crm_lead_id IS NULL OR h.business_name IS NULL OR h.provider IS NULL);
     `
+  },
+  {
+    id: '033_site_analytics_schema_reconciliation',
+    description: 'Safely reconcile legacy site_analytics table with authoritative schema, non-destructive id/page_views backfill, and unique id arbiter index',
+    sql: `
+      CREATE TABLE IF NOT EXISTS site_analytics (
+        id TEXT PRIMARY KEY,
+        visitor_id TEXT NOT NULL,
+        user_email TEXT,
+        ip_address TEXT,
+        user_agent TEXT,
+        referrer TEXT,
+        session_start TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        duration_seconds INTEGER DEFAULT 0,
+        page_views INTEGER DEFAULT 1,
+        form_progress INTEGER DEFAULT 0,
+        submitted BOOLEAN DEFAULT FALSE,
+        is_pricing_sensitive BOOLEAN DEFAULT FALSE,
+        cta_clicks JSONB DEFAULT '{"hero":0,"footer":0,"navbar":0}'::jsonb,
+        exit_page TEXT,
+        step_durations JSONB DEFAULT '{}'::jsonb,
+        whatsapp_handshake BOOLEAN DEFAULT FALSE,
+        calendly_handshake BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS id TEXT;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS visitor_id TEXT;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS user_email TEXT;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS ip_address TEXT;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS user_agent TEXT;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS referrer TEXT;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS session_start TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS duration_seconds INTEGER DEFAULT 0;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS page_views INTEGER DEFAULT 1;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS form_progress INTEGER DEFAULT 0;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS submitted BOOLEAN DEFAULT FALSE;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS is_pricing_sensitive BOOLEAN DEFAULT FALSE;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS cta_clicks JSONB DEFAULT '{"hero":0,"footer":0,"navbar":0}'::jsonb;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS exit_page TEXT;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS step_durations JSONB DEFAULT '{}'::jsonb;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS whatsapp_handshake BOOLEAN DEFAULT FALSE;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS calendly_handshake BOOLEAN DEFAULT FALSE;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE site_analytics ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+      -- Ensure visitor_id is populated for any legacy orphan rows before backfilling id
+      UPDATE site_analytics
+      SET visitor_id = 'vis_legacy_' || md5(ctid::text || clock_timestamp()::text || random()::text)
+      WHERE visitor_id IS NULL OR BTRIM(visitor_id) = '';
+
+      -- Non-destructive id backfill: primary legacy row per visitor_id receives id = visitor_id;
+      -- any duplicate visitor_id rows receive deterministic unique suffix _<rn>
+      WITH ranked_rows AS (
+        SELECT
+          ctid AS row_ctid,
+          visitor_id,
+          ROW_NUMBER() OVER (
+            PARTITION BY visitor_id
+            ORDER BY COALESCE(session_start, created_at, CURRENT_TIMESTAMP) ASC, ctid ASC
+          ) AS rn
+        FROM site_analytics
+        WHERE id IS NULL OR BTRIM(id) = ''
+      )
+      UPDATE site_analytics sa
+      SET id = CASE
+        WHEN rr.rn = 1 AND NOT EXISTS (SELECT 1 FROM site_analytics existing WHERE existing.id = rr.visitor_id)
+          THEN rr.visitor_id
+        ELSE rr.visitor_id || '_' || rr.rn::text || '_' || substr(md5(rr.row_ctid::text), 1, 6)
+      END
+      FROM ranked_rows rr
+      WHERE sa.ctid = rr.row_ctid;
+
+      -- Backfill operational defaults on pre-existing rows without overwriting recorded values
+      UPDATE site_analytics
+      SET
+        duration_seconds = COALESCE(duration_seconds, 0),
+        page_views = COALESCE(page_views, 1),
+        form_progress = COALESCE(form_progress, 0),
+        submitted = COALESCE(submitted, FALSE),
+        is_pricing_sensitive = COALESCE(is_pricing_sensitive, FALSE),
+        cta_clicks = COALESCE(cta_clicks, '{"hero":0,"footer":0,"navbar":0}'::jsonb),
+        step_durations = COALESCE(step_durations, '{}'::jsonb),
+        whatsapp_handshake = COALESCE(whatsapp_handshake, FALSE),
+        calendly_handshake = COALESCE(calendly_handshake, FALSE),
+        session_start = COALESCE(session_start, created_at, CURRENT_TIMESTAMP),
+        created_at = COALESCE(created_at, session_start, CURRENT_TIMESTAMP),
+        updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+      WHERE
+        duration_seconds IS NULL OR
+        page_views IS NULL OR
+        form_progress IS NULL OR
+        submitted IS NULL OR
+        is_pricing_sensitive IS NULL OR
+        cta_clicks IS NULL OR
+        step_durations IS NULL OR
+        whatsapp_handshake IS NULL OR
+        calendly_handshake IS NULL OR
+        session_start IS NULL OR
+        created_at IS NULL OR
+        updated_at IS NULL;
+
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'site_analytics' AND column_name = 'id' AND is_nullable = 'YES'
+        ) THEN
+          ALTER TABLE site_analytics ALTER COLUMN id SET NOT NULL;
+        END IF;
+
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'site_analytics' AND column_name = 'visitor_id' AND is_nullable = 'YES'
+        ) THEN
+          ALTER TABLE site_analytics ALTER COLUMN visitor_id SET NOT NULL;
+        END IF;
+
+        -- Add PRIMARY KEY (id) only when no primary key exists; preserve legacy visitor_id PK if present
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conrelid = 'site_analytics'::regclass AND contype = 'p'
+        ) THEN
+          ALTER TABLE site_analytics ADD PRIMARY KEY (id);
+        END IF;
+      END $$;
+
+      -- Guarantee ON CONFLICT (id) has a unique arbiter index regardless of legacy PK
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_site_analytics_id ON site_analytics(id);
+      CREATE INDEX IF NOT EXISTS idx_site_analytics_visitor ON site_analytics(visitor_id);
+      CREATE INDEX IF NOT EXISTS idx_site_analytics_start ON site_analytics(session_start DESC);
+    `
   }
 ];
+
+export const SITE_ANALYTICS_RECONCILIATION_SQL = MIGRATIONS.find(
+  (m) => m.id === '033_site_analytics_schema_reconciliation'
+)!.sql;
 
 // Distributed migration lock ID for PostgreSQL advisory lock
 const MIGRATION_LOCK_ID = 849204910284;
@@ -1555,8 +1692,11 @@ export async function runDatabaseMigrations(): Promise<void> {
     return;
   }
   const client = await pool.connect();
+  let releaseErr: any = undefined;
   try {
     await client.query('BEGIN');
+    await client.query("SET LOCAL lock_timeout = '8000'");
+    await client.query("SET LOCAL statement_timeout = '15000'");
 
     // Acquire PostgreSQL transaction-level advisory lock
     // Prevents concurrent execution of migrations across simultaneous Vercel instances
@@ -1590,12 +1730,13 @@ export async function runDatabaseMigrations(): Promise<void> {
 
     await client.query('COMMIT');
   } catch (err: any) {
+    releaseErr = err;
     try {
       await client.query('ROLLBACK');
     } catch {}
     console.error('[FATAL Database Migration Error]:', err.message || err);
     throw err;
   } finally {
-    client.release();
+    client.release(releaseErr);
   }
 }

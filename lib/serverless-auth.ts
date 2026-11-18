@@ -1,5 +1,6 @@
 import pool from './neon.js';
 import crypto from 'crypto';
+import { getSessionSecret, isAuthConfigurationError } from './serverAuth.js';
 
 export interface ServerlessRequest {
   headers: Record<string, string | string[] | undefined>;
@@ -14,33 +15,35 @@ export interface ServerlessResponse {
 }
 
 export async function verifyServerlessAdmin(req: ServerlessRequest, res: ServerlessResponse): Promise<boolean> {
-  const authHeader = typeof req.headers.authorization === 'string' ? req.headers.authorization : undefined;
-  const cookieHeader = typeof req.headers.cookie === 'string' ? req.headers.cookie : undefined;
-  let token = '';
-
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.substring(7).trim();
-  } else if (cookieHeader) {
-    const match = cookieHeader.match(/admin_session=([^;]+)/);
-    if (match) token = match[1].trim();
-  }
-
-  if (!token) {
-    res.status(401).json({ error: 'Unauthorized: Authentication required' });
-    return false;
-  }
-
-  const parts = token.split('.');
-  if (parts.length < 2) {
-    res.status(401).json({ error: 'Unauthorized: Invalid session token format' });
-    return false;
-  }
-
   try {
-    const secretRes = await pool.query("SELECT value FROM system_settings WHERE key = 'SESSION_SECRET'");
-    const sessionSecret = process.env.SESSION_SECRET || (secretRes.rows.length > 0 ? secretRes.rows[0].value : null);
-    if (!sessionSecret) {
-      res.status(500).json({ error: 'Server authentication configuration missing' });
+    const sessionSecret = await getSessionSecret();
+
+    const authHeader = typeof req.headers.authorization === 'string' ? req.headers.authorization : undefined;
+    const cookieHeader = typeof req.headers.cookie === 'string' ? req.headers.cookie : undefined;
+    let token = '';
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7).trim();
+    } else if (cookieHeader) {
+      const match = cookieHeader.match(/admin_session=([^;]+)/);
+      if (match) {
+        const rawCookie = match[1].trim();
+        try {
+          token = decodeURIComponent(rawCookie);
+        } catch {
+          token = rawCookie;
+        }
+      }
+    }
+
+    if (!token) {
+      res.status(401).json({ error: 'Unauthorized: Authentication required' });
+      return false;
+    }
+
+    const parts = token.split('.');
+    if (parts.length < 2) {
+      res.status(401).json({ error: 'Unauthorized: Invalid session token format' });
       return false;
     }
 
@@ -80,7 +83,12 @@ export async function verifyServerlessAdmin(req: ServerlessRequest, res: Serverl
     }
 
     return true;
-  } catch {
+  } catch (err: any) {
+    if (isAuthConfigurationError(err)) {
+      console.error('[Serverless Auth Configuration Alert]:', err.message);
+      res.status(503).json({ error: 'Server authentication configuration unavailable' });
+      return false;
+    }
     res.status(401).json({ error: 'Unauthorized: Session validation failed' });
     return false;
   }

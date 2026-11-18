@@ -49,7 +49,19 @@ import { runFullAuditDiagnostics } from './lib/auditDiagnostics.js';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
-import pool from './lib/neon.js';
+import pool, { getNeonDiagnostics, isTransientNeonError, sanitizeDbErrorMessage } from './lib/neon.js';
+import {
+  COOKIE_NAME,
+  SESSION_TTL_MS,
+  createSession,
+  getSessionSecret,
+  isAuthConfigurationError,
+  requireAdminAuth,
+  requireUserAuth,
+  revokeSession,
+  validateSession,
+  type SessionData
+} from './lib/serverAuth.js';
 import { activeJobAdapters } from './lib/services/jobAdapters.js';
 import { 
   deduplicateJobs, 
@@ -101,15 +113,18 @@ async function initializeNeonDatabase() {
     // Run versioned migrations guarded by PostgreSQL distributed advisory lock
     await runDatabaseMigrations();
 
-    // Non-destructive historical data reconciliation: session_bookings -> bookings
+    // Non-destructive historical data reconciliation: session_bookings -> bookings (only if legacy table exists)
     try {
-      await pool.query(`
-        INSERT INTO bookings (id, booking_date, booking_time, client_name, client_email, notes, status, created_at)
-        SELECT id, TO_DATE(booking_date, 'DD/MM/YYYY'), booking_time, COALESCE(name, 'Valued Client'), email, message, 'CONFIRMED', created_at
-        FROM session_bookings
-        WHERE booking_date IS NOT NULL AND booking_time IS NOT NULL AND booking_date ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}$'
-        ON CONFLICT (booking_date, booking_time) DO NOTHING;
-      `);
+      const legacyCheck = await pool.query("SELECT to_regclass('public.session_bookings') IS NOT NULL AS exists");
+      if (legacyCheck.rows[0]?.exists) {
+        await pool.query(`
+          INSERT INTO bookings (id, booking_date, booking_time, client_name, client_email, notes, status, created_at)
+          SELECT id, TO_DATE(booking_date, 'DD/MM/YYYY'), booking_time, COALESCE(name, 'Valued Client'), email, message, 'CONFIRMED', created_at
+          FROM session_bookings
+          WHERE booking_date IS NOT NULL AND booking_time IS NOT NULL AND booking_date ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}$'
+          ON CONFLICT (booking_date, booking_time) DO NOTHING;
+        `);
+      }
     } catch (e) {}
 
     // Seed default outreach template
@@ -121,7 +136,7 @@ async function initializeNeonDatabase() {
       `);
     } catch (e) {}
 
-    // Seed comprehensive blog articles (at least 4 articles per category across 4 major blogs)
+    // Seed comprehensive blog articles in a single batched round-trip
     try {
       const defaultBlogs = [
         // Category 1: Engineering & Systems Architecture
@@ -309,26 +324,45 @@ async function initializeNeonDatabase() {
         }
       ];
 
-      for (const b of defaultBlogs) {
-        await pool.query(`
-          INSERT INTO blogs (id, title, slug, excerpt, content, author, category, cover_image, published, published_at, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-          ON CONFLICT (id) DO NOTHING;
-        `, [b.id, b.title, b.slug, b.excerpt, b.content, b.author, b.category, b.cover_image, b.published]);
+      const blogIds = defaultBlogs.map(b => b.id);
+      const existingBlogs = await pool.query('SELECT id FROM blogs WHERE id = ANY($1::text[])', [blogIds]);
+      const existingBlogSet = new Set(existingBlogs.rows.map((r: any) => r.id));
+      const missingBlogs = defaultBlogs.filter(b => !existingBlogSet.has(b.id));
+
+      if (missingBlogs.length > 0) {
+        const placeholders: string[] = [];
+        const params: any[] = [];
+        let idx = 1;
+        for (const b of missingBlogs) {
+          placeholders.push(
+            `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+          );
+          params.push(b.id, b.title, b.slug, b.excerpt, b.content, b.author, b.category, b.cover_image, b.published);
+        }
+        await pool.query(
+          `INSERT INTO blogs (id, title, slug, excerpt, content, author, category, cover_image, published, published_at, created_at, updated_at)
+           VALUES ${placeholders.join(', ')}
+           ON CONFLICT (id) DO NOTHING`,
+          params
+        );
       }
     } catch (e) {
-      console.warn('[Blog Seeding Warning]:', e);
+      console.warn('[Blog Seeding Warning]:', sanitizeDbErrorMessage(e));
     }
 
     // Ensure administrator accounts exist without hardcoded passwords or fallback variants
     const adminEmails = ['admin@avartah.com', 'harristotle84@gmail.com'];
+    const existingAdminsRes = await pool.query(
+      'SELECT LOWER(email) AS email FROM admin_users WHERE LOWER(email) = ANY($1::text[])',
+      [adminEmails]
+    );
+    const existingAdminSet = new Set(existingAdminsRes.rows.map((r: any) => r.email));
     for (const email of adminEmails) {
-      const res = await pool.query('SELECT * FROM admin_users WHERE LOWER(email) = LOWER($1)', [email]);
-      if (res.rows.length === 0) {
+      if (!existingAdminSet.has(email.toLowerCase())) {
         const initialPassword = process.env.INITIAL_ADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
         const hash = await bcrypt.hash(initialPassword, 10);
         await pool.query(
-          'INSERT INTO admin_users (email, password_hash, role, is_active) VALUES ($1, $2, $3, $4)',
+          'INSERT INTO admin_users (email, password_hash, role, is_active) VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO NOTHING',
           [email, hash, 'admin', true]
         );
         console.log('[Neon DB] Initialized admin account for:', email);
@@ -338,12 +372,10 @@ async function initializeNeonDatabase() {
     isDbReady = true;
     dbInitError = null;
   } catch (err: any) {
-    dbInitError = err;
+    dbInitError = err instanceof Error ? err : new Error(String(err));
     isDbReady = false;
-    console.error('[Neon DB Initialization Notice]:', err.message || err);
-    if (process.env.NODE_ENV === 'production') {
-      throw err;
-    }
+    console.error('[Neon DB Initialization Notice]:', sanitizeDbErrorMessage(err));
+    throw dbInitError;
   }
 }
 
@@ -351,13 +383,35 @@ let dbInitError: Error | null = null;
 let isDbReady = false;
 let dbInitPromise: Promise<void> | null = null;
 
+export function resetDbInitStateForTesting(): void {
+  dbInitError = null;
+  isDbReady = false;
+  dbInitPromise = null;
+}
+
 export function ensureDbInitialized(): Promise<void> {
   if (process.env.AVARTAH_SKIP_DB_INIT === '1') {
     isDbReady = true;
+    dbInitError = null;
+    return Promise.resolve();
+  }
+  if (isDbReady) {
     return Promise.resolve();
   }
   if (!dbInitPromise) {
-    dbInitPromise = initializeNeonDatabase();
+    dbInitPromise = initializeNeonDatabase()
+      .then(() => {
+        isDbReady = true;
+        dbInitError = null;
+      })
+      .catch((err: any) => {
+        isDbReady = false;
+        dbInitError = err instanceof Error ? err : new Error(String(err));
+        // Clear rejected promise so subsequent requests on a warm Vercel instance
+        // can recover automatically once Neon wakes up.
+        dbInitPromise = null;
+        throw dbInitError;
+      });
   }
   return dbInitPromise;
 }
@@ -513,32 +567,48 @@ app.use(async (_req, res, next) => {
   next();
 });
 
-// Request barrier: ensure database initialization completes before any API request is processed
+// Request barrier: ensure database initialization completes before any DB-backed API request is processed
 app.use(async (req, res, next) => {
-  if (!req.path.startsWith('/api') || req.path === '/api/health' || req.path === '/api/ready' || req.path === '/api/db-health') {
+  if (
+    req.method === 'OPTIONS' ||
+    !req.path.startsWith('/api') ||
+    req.path === '/api/health' ||
+    req.path === '/api/ready' ||
+    req.path === '/api/db-health'
+  ) {
     return next();
   }
   if (!process.env.DATABASE_URL) {
-    return res.status(503).json({ 
+    return res.status(503).json({
       error: 'Database is not configured. Please supply DATABASE_URL in environment variables.',
-      status: 'unconfigured' 
+      status: 'unconfigured'
     });
   }
   try {
     await ensureDbInitialized();
     next();
   } catch (err: any) {
-    res.status(503).json({ error: 'Service Unavailable: Database initialization failed or in progress.' });
+    const diag = getNeonDiagnostics();
+    console.error(
+      `[API DB Barrier Error] path=${req.path} host=${diag.host || 'unknown'} pooled=${diag.isPooledEndpoint} transient=${isTransientNeonError(err)}:`,
+      sanitizeDbErrorMessage(err)
+    );
+    res.status(503).json({
+      success: false,
+      errorCode: 'DATABASE_UNAVAILABLE',
+      error: 'Service Unavailable: Database initialization failed or temporarily unavailable.'
+    });
   }
 });
 
 // Dedicated comprehensive readiness check
 app.get('/api/ready', async (req, res) => {
+  const neonDiag = getNeonDiagnostics();
   try {
     if (!isDbReady) {
       await ensureDbInitialized();
     }
-    const checkRes = await pool.query(`
+    await pool.query(`
       SELECT 
         (SELECT COUNT(*)::int FROM admin_users) as admin_count,
         (SELECT COUNT(*)::int FROM crm_leads) as leads_count,
@@ -548,6 +618,7 @@ app.get('/api/ready', async (req, res) => {
     res.json({
       status: 'ready',
       database: 'connected',
+      neon: neonDiag,
       checks: {
         admin_users: true,
         crm_leads: true,
@@ -556,8 +627,11 @@ app.get('/api/ready', async (req, res) => {
       }
     });
   } catch (err: any) {
+    console.error(`[Readiness Check Failed] host=${neonDiag.host || 'unknown'} pooled=${neonDiag.isPooledEndpoint}:`, sanitizeDbErrorMessage(err));
     res.status(503).json({
       status: 'not_ready',
+      database: 'disconnected',
+      neon: neonDiag,
       error: 'Database service is not ready'
     });
   }
@@ -571,14 +645,12 @@ export async function startServer() {
     console.warn('[Paystack Readiness Notice]: Payment endpoints disabled until configured —', paystackReadiness.error);
   }
 
-  if (process.env.DATABASE_URL && process.env.AVARTAH_SKIP_DB_INIT !== '1') {
+  if (process.env.NODE_ENV === 'production' && process.env.AVARTAH_TEST_MODE !== '1') {
     try {
-      await ensureDbInitialized();
-    } catch (err: any) {
-      console.warn('[Neon DB Boot Warning]: Database connection could not be established immediately:', err?.message || err);
+      await getSessionSecret();
+    } catch (authErr: any) {
+      console.warn('[Auth Configuration Notice]:', authErr?.message || authErr);
     }
-  } else {
-    console.warn('[Neon DB Notice]: DATABASE_URL is not set. Development server running.');
   }
 
   app.use(compression()); // Enable Gzip compression
@@ -698,58 +770,7 @@ export async function startServer() {
     next();
   });
 
-  // --- SECURE DATABASE-BACKED SESSION INFRASTRUCTURE ---
-  interface SessionData {
-    id: string;
-    userId?: number;
-    email: string;
-    role: string;
-    createdAt: number;
-    expiresAt: number;
-  }
-
-  const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-  const COOKIE_NAME = 'admin_session';
-
-  // Synchronized or environment-provided 256-bit SESSION_SECRET
-  let cachedSessionSecret: string | null = process.env.SESSION_SECRET || null;
-  async function getSessionSecret(): Promise<string> {
-    if (cachedSessionSecret && cachedSessionSecret.length >= 32) {
-      return cachedSessionSecret;
-    }
-    if (process.env.NODE_ENV === 'production') {
-      if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
-        throw new Error('FATAL: A strong SESSION_SECRET (minimum 32 characters) must be configured in environment variables for production.');
-      }
-      cachedSessionSecret = process.env.SESSION_SECRET;
-      return cachedSessionSecret;
-    }
-    try {
-      const secretRes = await pool.query("SELECT value FROM system_settings WHERE key = 'SESSION_SECRET'");
-      if (secretRes.rows.length > 0) {
-        cachedSessionSecret = secretRes.rows[0].value;
-      } else {
-        const generatedSecret = crypto.randomBytes(32).toString('hex');
-        await pool.query(
-          "INSERT INTO system_settings (key, value) VALUES ('SESSION_SECRET', $1) ON CONFLICT (key) DO NOTHING",
-          [generatedSecret]
-        );
-        const recheck = await pool.query("SELECT value FROM system_settings WHERE key = 'SESSION_SECRET'");
-        cachedSessionSecret = recheck.rows.length > 0 ? recheck.rows[0].value : generatedSecret;
-        console.log('[Security] Initialized and verified synchronized 256-bit SESSION_SECRET in database.');
-      }
-    } catch (err: any) {
-      console.error('[FATAL Configuration Error] Could not retrieve or persist SESSION_SECRET in database:', err.message || err);
-      throw new Error(
-        'FATAL: SESSION_SECRET is not configured in environment and persistent database secret retrieval failed.'
-      );
-    }
-    if (!cachedSessionSecret || cachedSessionSecret.length < 16) {
-      throw new Error('FATAL: A strong SESSION_SECRET is strictly required for deployment.');
-    }
-    return cachedSessionSecret;
-  }
-
+  // --- SECURE DATABASE-BACKED SESSION INFRASTRUCTURE (Consolidated in lib/serverAuth.ts) ---
   // Cross-site iframe compatible cookie options (SameSite=None; Secure; Partitioned on HTTPS)
   const getCookieOptions = (req?: express.Request) => {
     const isHttps = isHttpsRequest(req);
@@ -772,162 +793,6 @@ export async function startServer() {
       ...(isHttps ? { partitioned: true } : {}),
       path: '/'
     };
-  };
-
-  async function createSession(email: string, role: string = 'admin', req?: express.Request): Promise<string> {
-    const secret = await getSessionSecret();
-    const sessionId = crypto.randomBytes(24).toString('hex');
-    const createdAt = Date.now();
-    const expiresAt = createdAt + SESSION_TTL_MS;
-    const ip = req ? getTrustedClientIp(req) : '';
-    const ua = (req?.headers['user-agent'] as string) || '';
-
-    const payload = JSON.stringify({ sid: sessionId, email: email.toLowerCase(), role, exp: expiresAt, iat: createdAt });
-    const payloadB64 = Buffer.from(payload).toString('base64url');
-    
-    const signature = crypto
-      .createHmac('sha256', secret)
-      .update(payloadB64)
-      .digest('hex');
-      
-    const fullToken = `${payloadB64}.${signature}`;
-    const tokenHash = crypto.createHash('sha256').update(fullToken).digest('hex');
-
-    // Enforce fail-closed persistent session store:
-    // If the session record cannot be committed to the database, do not issue the session token.
-    try {
-      await pool.query(
-        `INSERT INTO admin_sessions (id, user_email, user_role, created_at, expires_at, revoked, ip_address, user_agent, token_hash)
-         VALUES ($1, $2, $3, TO_TIMESTAMP($4 / 1000.0), TO_TIMESTAMP($5 / 1000.0), FALSE, $6, $7, $8)`,
-        [sessionId, email.toLowerCase(), role, createdAt, expiresAt, ip, ua, tokenHash]
-      );
-    } catch (err: any) {
-      console.error('[Session Store Error]: Failed to persist session in database:', err.message || err);
-      throw new Error('Database authentication service unavailable: session creation failed closed.');
-    }
-
-    return fullToken;
-  }
-
-  async function validateSession(token: string | undefined): Promise<SessionData | null> {
-    if (!token || typeof token !== 'string') return null;
-    const secret = await getSessionSecret();
-    
-    const parts = token.trim().split('.');
-    if (parts.length < 2) return null;
-
-    const [payloadB64, signature] = parts;
-    try {
-      const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(payloadB64)
-        .digest('hex');
-      
-      const sigBuffer = Buffer.from(signature, 'hex');
-      const expBuffer = Buffer.from(expectedSignature, 'hex');
-      if (sigBuffer.length !== expBuffer.length || !crypto.timingSafeEqual(sigBuffer, expBuffer)) {
-        return null;
-      }
-      
-      const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
-      if (!payload || !payload.exp || Date.now() > payload.exp) {
-        return null;
-      }
-
-      // Check persistent shared database session table for revocation
-      const sessionRes = await pool.query(
-        'SELECT * FROM admin_sessions WHERE id = $1 AND revoked = FALSE AND expires_at > CURRENT_TIMESTAMP',
-        [payload.sid]
-      );
-      if (sessionRes.rows.length === 0) {
-        return null;
-      }
-
-      // Check admin_users first, then users table
-      let userRes = await pool.query(
-        'SELECT id, email, role, is_active FROM admin_users WHERE LOWER(email) = LOWER($1)',
-        [payload.email]
-      );
-      
-      let activeUser = null;
-      if (userRes.rows.length > 0 && userRes.rows[0].is_active) {
-        activeUser = userRes.rows[0];
-      } else {
-        const ordinaryRes = await pool.query(
-          'SELECT id, email, role, is_active FROM users WHERE LOWER(email) = LOWER($1)',
-          [payload.email]
-        );
-        if (ordinaryRes.rows.length > 0 && ordinaryRes.rows[0].is_active) {
-          activeUser = ordinaryRes.rows[0];
-        }
-      }
-
-      if (!activeUser) {
-        return null;
-      }
-
-      return {
-        id: payload.sid,
-        userId: activeUser.id,
-        email: activeUser.email,
-        role: activeUser.role || payload.role || 'user',
-        createdAt: payload.iat || (payload.exp - SESSION_TTL_MS),
-        expiresAt: payload.exp
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  async function revokeSession(token: string | undefined): Promise<void> {
-    if (!token || typeof token !== 'string') return;
-    try {
-      const parts = token.trim().split('.');
-      if (parts.length >= 2) {
-        const payload = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
-        if (payload?.sid) {
-          await pool.query('UPDATE admin_sessions SET revoked = TRUE WHERE id = $1', [payload.sid]);
-        }
-      }
-    } catch (err: any) {
-      console.warn('[Revoke Session Warning]:', err.message);
-    }
-  }
-
-  // Server-side User Authorization Guard (ordinary users or admins)
-  const requireUserAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const rawToken = req.cookies[COOKIE_NAME] || req.headers.authorization?.replace(/^Bearer\s+/i, '');
-    if (!rawToken) {
-      return res.status(401).json({ error: 'Unauthorized: Authentication required.' });
-    }
-
-    const session = await validateSession(rawToken);
-    if (session) {
-      (req as any).user = session;
-      return next();
-    }
-
-    return res.status(401).json({ error: 'Session invalid or expired. Please log in again.' });
-  };
-
-  // Server-side Admin Authorization Guard (admins only)
-  const requireAdminAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const rawToken = req.cookies[COOKIE_NAME] || req.headers.authorization?.replace(/^Bearer\s+/i, '');
-    if (!rawToken) {
-      return res.status(401).json({ error: 'Unauthorized: Admin authentication required.' });
-    }
-
-    const session = await validateSession(rawToken);
-    if (!session) {
-      return res.status(401).json({ error: 'Session invalid or expired. Please log in again.' });
-    }
-
-    if (session.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden: Administrator privileges required.' });
-    }
-
-    (req as any).adminUser = session;
-    return next();
   };
 
   // Workspace membership verification helper
@@ -1215,10 +1080,10 @@ export async function startServer() {
   // 4d. Accept workspace invitation (Atomic Transaction)
   app.post('/api/workspaces/invitations/accept', async (req, res) => {
     const client = await pool.connect();
+    let releaseErr: any;
     try {
       const { token } = req.body;
       if (!token || typeof token !== 'string') {
-        client.release();
         return res.status(400).json({ error: 'Valid invitation token is required.' });
       }
 
@@ -1235,21 +1100,18 @@ export async function startServer() {
 
       if (invRes.rows.length === 0) {
         await client.query('ROLLBACK');
-        client.release();
         return res.status(404).json({ error: 'Invitation not found or invalid.' });
       }
 
       const inv = invRes.rows[0];
       if (inv.status !== 'pending') {
         await client.query('ROLLBACK');
-        client.release();
         return res.status(400).json({ error: `This invitation is already ${inv.status}.` });
       }
 
       if (new Date(inv.expires_at) < new Date()) {
         await client.query('UPDATE workspace_invitations SET status = \'expired\' WHERE id = $1', [inv.id]);
         await client.query('COMMIT');
-        client.release();
         return res.status(400).json({ error: 'This invitation has expired.' });
       }
 
@@ -1265,7 +1127,6 @@ export async function startServer() {
       );
 
       await client.query('COMMIT');
-      client.release();
 
       res.json({
         success: true,
@@ -1273,11 +1134,14 @@ export async function startServer() {
         message: 'Workspace invitation successfully accepted.'
       });
     } catch (error) {
+      releaseErr = error;
       try {
         await client.query('ROLLBACK');
       } catch {}
-      client.release();
       handleDbError(res, error, 'workspaces:invitations:accept');
+    } finally {
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   });
 
@@ -1447,14 +1311,28 @@ export async function startServer() {
   const handleDbError = (res: express.Response, error: any, context: string) => {
     const ref = 'dberr_' + crypto.randomBytes(6).toString('hex');
     const rawMsg = typeof error === 'string' ? error : (error?.message || String(error));
-    // Sanitize any accidental credentials or tokens from server logs
+    // Sanitize any accidental credentials, connection strings, or emails from server logs
     const safeLogMsg = rawMsg
+      .replace(/postgres(?:ql)?:\/\/[^\s'"]+/gi, 'postgresql://[REDACTED]')
       .replace(/(password|secret|key|token|bearer|authorization)=?[^\s&]+/gi, '$1=[REDACTED]')
       .replace(/[a-zA-Z0-9_\-\.\/]+@[a-zA-Z0-9_\-\.]+\.[a-zA-Z]{2,}/g, '[REDACTED_EMAIL]');
-    
-    console.error(`[DB Error ${ref} - ${context}]:`, safeLogMsg);
-    
-    res.status(500).json({ 
+
+    const transient = isTransientNeonError(error);
+    const diag = getNeonDiagnostics();
+    console.error(
+      `[DB Error ${ref} - ${context}] transient=${transient} host=${diag.host || 'unknown'} pooled=${diag.isPooledEndpoint}:`,
+      safeLogMsg
+    );
+
+    if (transient) {
+      return res.status(503).json({
+        error: 'Database service is temporarily unavailable. Please try again in a moment.',
+        errorCode: 'DATABASE_UNAVAILABLE',
+        ref
+      });
+    }
+
+    return res.status(500).json({
       error: 'An unexpected database error occurred. Please try again later.',
       ref
     });
@@ -2021,63 +1899,195 @@ export async function startServer() {
   app.post('/api/analytics/init', async (req, res) => {
     try {
       const session = req.body || {};
-      const visitorId = session.visitor_id || `vis_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-      const userEmail = session.user_email || null;
-      const duration = session.duration_seconds || 0;
-      const pages = session.page_views || 1;
-      const progress = session.form_progress || 0;
+      const visitorId = String(session.visitor_id || `vis_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`).trim().slice(0, 128);
+      const userEmail = typeof session.user_email === 'string' && session.user_email.trim() ? session.user_email.trim().slice(0, 255) : null;
+      const duration = Math.max(0, Math.round(Number(session.duration_seconds) || 0));
+      const pages = Math.max(1, Math.round(Number(session.page_views) || 1));
+      const progress = Math.max(0, Math.round(Number(session.form_progress) || 0));
       const submitted = Boolean(session.submitted);
       const pricing = Boolean(session.is_pricing_sensitive);
+      const ctaClicksJson = JSON.stringify(session.cta_clicks && typeof session.cta_clicks === 'object' ? session.cta_clicks : { hero: 0, footer: 0, navbar: 0 });
+      const exitPage = typeof session.exit_page === 'string' ? session.exit_page.trim().slice(0, 255) : null;
+      const stepDurationsJson = JSON.stringify(session.step_durations && typeof session.step_durations === 'object' ? session.step_durations : {});
+      const whatsappHandshake = Boolean(session.whatsapp_handshake);
+      const calendlyHandshake = Boolean(session.calendly_handshake);
 
-      await pool.query(`
-        INSERT INTO site_analytics (id, visitor_id, user_email, duration_seconds, page_views, form_progress, submitted, is_pricing_sensitive, created_at, updated_at)
-        VALUES ($1, $1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        ON CONFLICT (id) DO UPDATE SET
-          user_email = COALESCE(EXCLUDED.user_email, site_analytics.user_email),
-          duration_seconds = EXCLUDED.duration_seconds,
-          page_views = EXCLUDED.page_views,
-          form_progress = EXCLUDED.form_progress,
-          submitted = EXCLUDED.submitted,
-          is_pricing_sensitive = EXCLUDED.is_pricing_sensitive,
-          updated_at = CURRENT_TIMESTAMP
-      `, [visitorId, userEmail, duration, pages, progress, submitted, pricing]);
+      const upsertParams = [
+        visitorId,
+        userEmail,
+        duration,
+        pages,
+        progress,
+        submitted,
+        pricing,
+        ctaClicksJson,
+        exitPage,
+        stepDurationsJson,
+        whatsappHandshake,
+        calendlyHandshake
+      ];
+
+      try {
+        await pool.query(`
+          INSERT INTO site_analytics (
+            id, visitor_id, user_email, duration_seconds, page_views, form_progress,
+            submitted, is_pricing_sensitive, cta_clicks, exit_page, step_durations,
+            whatsapp_handshake, calendly_handshake, session_start, created_at, updated_at
+          )
+          VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10::jsonb, $11, $12, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          ON CONFLICT (id) DO UPDATE SET
+            user_email = COALESCE(EXCLUDED.user_email, site_analytics.user_email),
+            duration_seconds = GREATEST(COALESCE(site_analytics.duration_seconds, 0), EXCLUDED.duration_seconds),
+            page_views = GREATEST(COALESCE(site_analytics.page_views, 1), EXCLUDED.page_views),
+            form_progress = GREATEST(COALESCE(site_analytics.form_progress, 0), EXCLUDED.form_progress),
+            submitted = COALESCE(site_analytics.submitted, FALSE) OR EXCLUDED.submitted,
+            is_pricing_sensitive = COALESCE(site_analytics.is_pricing_sensitive, FALSE) OR EXCLUDED.is_pricing_sensitive,
+            cta_clicks = COALESCE(EXCLUDED.cta_clicks, site_analytics.cta_clicks),
+            exit_page = COALESCE(EXCLUDED.exit_page, site_analytics.exit_page),
+            step_durations = COALESCE(EXCLUDED.step_durations, site_analytics.step_durations),
+            whatsapp_handshake = COALESCE(site_analytics.whatsapp_handshake, FALSE) OR EXCLUDED.whatsapp_handshake,
+            calendly_handshake = COALESCE(site_analytics.calendly_handshake, FALSE) OR EXCLUDED.calendly_handshake,
+            updated_at = CURRENT_TIMESTAMP
+        `, upsertParams);
+      } catch (insertErr: any) {
+        // Fallback if legacy PRIMARY KEY is still on visitor_id and an existing row had a distinct id
+        if (insertErr?.code === '23505') {
+          await pool.query(`
+            UPDATE site_analytics
+            SET user_email = COALESCE($2, user_email),
+                duration_seconds = GREATEST(COALESCE(duration_seconds, 0), $3),
+                page_views = GREATEST(COALESCE(page_views, 1), $4),
+                form_progress = GREATEST(COALESCE(form_progress, 0), $5),
+                submitted = COALESCE(submitted, FALSE) OR $6,
+                is_pricing_sensitive = COALESCE(is_pricing_sensitive, FALSE) OR $7,
+                cta_clicks = COALESCE($8::jsonb, cta_clicks),
+                exit_page = COALESCE($9, exit_page),
+                step_durations = COALESCE($10::jsonb, step_durations),
+                whatsapp_handshake = COALESCE(whatsapp_handshake, FALSE) OR $11,
+                calendly_handshake = COALESCE(calendly_handshake, FALSE) OR $12,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE visitor_id = $1
+          `, upsertParams);
+        } else {
+          throw insertErr;
+        }
+      }
 
       res.json({ success: true, visitor_id: visitorId });
     } catch (error: any) {
-      console.warn('[Analytics Init Warning]:', error?.message || error);
-      res.json({ success: false, error: 'Analytics init deferred' });
+      handleDbError(res, error, 'analytics:init');
     }
   });
 
   app.patch('/api/analytics/sync', async (req, res) => {
     try {
       const session = req.body || {};
-      const visitorId = session.visitor_id;
+      const visitorId = typeof session.visitor_id === 'string' ? session.visitor_id.trim().slice(0, 128) : '';
       if (!visitorId) {
         return res.status(400).json({ error: 'visitor_id is required' });
       }
 
-      const duration = session.duration_seconds || 0;
-      const pages = session.page_views || 1;
-      const progress = session.form_progress || 0;
+      const duration = Math.max(0, Math.round(Number(session.duration_seconds) || 0));
+      const pages = Math.max(1, Math.round(Number(session.page_views) || 1));
+      const progress = Math.max(0, Math.round(Number(session.form_progress) || 0));
       const submitted = Boolean(session.submitted);
       const pricing = Boolean(session.is_pricing_sensitive);
+      const ctaClicksJson = session.cta_clicks && typeof session.cta_clicks === 'object' ? JSON.stringify(session.cta_clicks) : null;
+      const exitPage = typeof session.exit_page === 'string' ? session.exit_page.trim().slice(0, 255) : null;
+      const stepDurationsJson = session.step_durations && typeof session.step_durations === 'object' ? JSON.stringify(session.step_durations) : null;
+      const whatsappHandshake = session.whatsapp_handshake === undefined ? null : Boolean(session.whatsapp_handshake);
+      const calendlyHandshake = session.calendly_handshake === undefined ? null : Boolean(session.calendly_handshake);
 
-      await pool.query(`
+      const updateRes = await pool.query(`
         UPDATE site_analytics 
         SET duration_seconds = $1,
             page_views = $2,
             form_progress = $3,
             submitted = $4,
             is_pricing_sensitive = $5,
+            cta_clicks = COALESCE($7::jsonb, cta_clicks),
+            exit_page = COALESCE($8, exit_page),
+            step_durations = COALESCE($9::jsonb, step_durations),
+            whatsapp_handshake = COALESCE($10, whatsapp_handshake),
+            calendly_handshake = COALESCE($11, calendly_handshake),
             updated_at = CURRENT_TIMESTAMP
         WHERE visitor_id = $6
-      `, [duration, pages, progress, submitted, pricing, visitorId]);
+      `, [
+        duration,
+        pages,
+        progress,
+        submitted,
+        pricing,
+        visitorId,
+        ctaClicksJson,
+        exitPage,
+        stepDurationsJson,
+        whatsappHandshake,
+        calendlyHandshake
+      ]);
+
+      // If /api/analytics/sync arrives before /api/analytics/init or after a cold start, upsert idempotently
+      if (updateRes.rowCount === 0) {
+        const upsertSyncParams = [
+          visitorId,
+          duration,
+          pages,
+          progress,
+          submitted,
+          pricing,
+          ctaClicksJson,
+          exitPage,
+          stepDurationsJson,
+          whatsappHandshake,
+          calendlyHandshake
+        ];
+        try {
+          await pool.query(`
+            INSERT INTO site_analytics (
+              id, visitor_id, duration_seconds, page_views, form_progress, submitted,
+              is_pricing_sensitive, cta_clicks, exit_page, step_durations,
+              whatsapp_handshake, calendly_handshake, session_start, created_at, updated_at
+            )
+            VALUES ($1, $1, $2, $3, $4, $5, $6, COALESCE($7::jsonb, '{"hero":0,"footer":0,"navbar":0}'::jsonb), $8, COALESCE($9::jsonb, '{}'::jsonb), COALESCE($10, FALSE), COALESCE($11, FALSE), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT (id) DO UPDATE SET
+              duration_seconds = EXCLUDED.duration_seconds,
+              page_views = EXCLUDED.page_views,
+              form_progress = EXCLUDED.form_progress,
+              submitted = EXCLUDED.submitted,
+              is_pricing_sensitive = EXCLUDED.is_pricing_sensitive,
+              cta_clicks = COALESCE(EXCLUDED.cta_clicks, site_analytics.cta_clicks),
+              exit_page = COALESCE(EXCLUDED.exit_page, site_analytics.exit_page),
+              step_durations = COALESCE(EXCLUDED.step_durations, site_analytics.step_durations),
+              whatsapp_handshake = COALESCE(EXCLUDED.whatsapp_handshake, site_analytics.whatsapp_handshake),
+              calendly_handshake = COALESCE(EXCLUDED.calendly_handshake, site_analytics.calendly_handshake),
+              updated_at = CURRENT_TIMESTAMP
+          `, upsertSyncParams);
+        } catch (insertErr: any) {
+          if (insertErr?.code === '23505') {
+            await pool.query(`
+              UPDATE site_analytics
+              SET duration_seconds = $2,
+                  page_views = $3,
+                  form_progress = $4,
+                  submitted = $5,
+                  is_pricing_sensitive = $6,
+                  cta_clicks = COALESCE($7::jsonb, cta_clicks),
+                  exit_page = COALESCE($8, exit_page),
+                  step_durations = COALESCE($9::jsonb, step_durations),
+                  whatsapp_handshake = COALESCE($10, whatsapp_handshake),
+                  calendly_handshake = COALESCE($11, calendly_handshake),
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE visitor_id = $1
+            `, upsertSyncParams);
+          } else {
+            throw insertErr;
+          }
+        }
+      }
 
       res.json({ success: true });
     } catch (error: any) {
-      console.warn('[Analytics Sync Warning]:', error?.message || error);
-      res.json({ success: false, error: 'Analytics sync deferred' });
+      handleDbError(res, error, 'analytics:sync');
     }
   });
 
@@ -2187,6 +2197,9 @@ export async function startServer() {
 
   app.post('/api/auth/register', async (req, res) => {
     try {
+      if (process.env.NODE_ENV === 'production') {
+        await getSessionSecret();
+      }
       const { email, password } = req.body || {};
       if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
         return res.status(400).json({ error: 'Email and password are required' });
@@ -2238,12 +2251,23 @@ export async function startServer() {
         user: { id: newUser.id, email: newUser.email, role: newUser.role }
       });
     } catch (error) {
+      if (isAuthConfigurationError(error)) {
+        console.error('[Auth Configuration Alert - register]:', (error as Error).message);
+        return res.status(503).json({
+          success: false,
+          errorCode: 'AUTH_UNAVAILABLE',
+          error: 'Authentication service is temporarily unavailable.'
+        });
+      }
       handleDbError(res, error, 'auth:register');
     }
   });
 
   app.post('/api/auth/login', async (req, res) => {
     try {
+      if (process.env.NODE_ENV === 'production') {
+        await getSessionSecret();
+      }
       const { email, password } = req.body || {};
       if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
         return res.status(400).json({ error: 'Email and password are required' });
@@ -2323,6 +2347,14 @@ export async function startServer() {
         user: { id: user.id, email: user.email, role }
       });
     } catch (error) {
+      if (isAuthConfigurationError(error)) {
+        console.error('[Auth Configuration Alert - login]:', (error as Error).message);
+        return res.status(503).json({
+          success: false,
+          errorCode: 'AUTH_UNAVAILABLE',
+          error: 'Authentication service is temporarily unavailable.'
+        });
+      }
       handleDbError(res, error, 'auth:login');
     }
   });
@@ -2335,17 +2367,33 @@ export async function startServer() {
   });
 
   app.get('/api/auth/session', async (req, res) => {
-    const rawToken = req.cookies[COOKIE_NAME] || req.headers.authorization?.replace(/^Bearer\s+/i, '');
-    const session = await validateSession(rawToken);
-    const csrfToken = (req as any).csrfToken || req.cookies['XSRF-TOKEN'] || null;
-    if (session) {
-      return res.json({
-        authenticated: true,
-        csrfToken,
-        user: { email: session.email, role: session.role }
-      });
+    const csrfToken = (req as any).csrfToken || req.cookies?.['XSRF-TOKEN'] || null;
+    try {
+      if (process.env.NODE_ENV === 'production') {
+        await getSessionSecret();
+      }
+      const rawToken = req.cookies?.[COOKIE_NAME] || req.headers.authorization?.replace(/^Bearer\s+/i, '');
+      const session = await validateSession(rawToken);
+      if (session) {
+        return res.json({
+          authenticated: true,
+          csrfToken,
+          user: { email: session.email, role: session.role }
+        });
+      }
+      return res.json({ authenticated: false, csrfToken });
+    } catch (error) {
+      if (isAuthConfigurationError(error)) {
+        console.error('[Auth Configuration Alert - session]:', (error as Error).message);
+        return res.status(503).json({
+          authenticated: false,
+          csrfToken,
+          errorCode: 'AUTH_UNAVAILABLE',
+          error: 'Authentication service is temporarily unavailable.'
+        });
+      }
+      handleDbError(res, error, 'auth:session');
     }
-    res.json({ authenticated: false, csrfToken });
   });
 
   app.post('/api/auth/change-password', requireUserAuth, async (req, res) => {
@@ -2480,16 +2528,15 @@ export async function startServer() {
 
   app.post('/api/auth/reset-password', async (req, res) => {
     const client = await pool.connect();
+    let releaseErr: any;
     try {
       const { token, newPassword } = req.body;
       if (!token || typeof token !== 'string') {
-        client.release();
         return res.status(400).json({ error: 'Valid password reset token is required.' });
       }
 
       const pwdValidation = validateStrongPassword(newPassword);
       if (!pwdValidation.valid) {
-        client.release();
         return res.status(400).json({ error: pwdValidation.error });
       }
 
@@ -2508,7 +2555,6 @@ export async function startServer() {
 
       if (claimRes.rows.length === 0) {
         await client.query('ROLLBACK');
-        client.release();
         return res.status(400).json({ error: 'Invalid or expired password reset token. Please request a new one.' });
       }
 
@@ -2532,18 +2578,20 @@ export async function startServer() {
       await client.query('UPDATE admin_sessions SET revoked = TRUE WHERE LOWER(user_email) = LOWER($1)', [targetEmail]);
 
       await client.query('COMMIT');
-      client.release();
 
       res.json({
         success: true,
         message: 'Password has been successfully reset. Please log in with your new password.'
       });
     } catch (error) {
+      releaseErr = error;
       try {
         await client.query('ROLLBACK');
       } catch {}
-      client.release();
       handleDbError(res, error, 'auth:reset-password');
+    } finally {
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   });
 
@@ -2625,6 +2673,7 @@ export async function startServer() {
     }
 
     const client = await pool.connect();
+    let releaseErr: any;
     try {
       await client.query('BEGIN');
 
@@ -2704,12 +2753,14 @@ export async function startServer() {
       await client.query('COMMIT');
       res.json(updateRes.rows[0]);
     } catch (error) {
+      releaseErr = error;
       try {
         await client.query('ROLLBACK');
       } catch {}
       handleDbError(res, error, 'admin:users:update');
     } finally {
-      client.release();
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   });
 
@@ -2717,6 +2768,7 @@ export async function startServer() {
     const { id } = req.params;
     const currentAdmin = (req as any).adminUser;
     const client = await pool.connect();
+    let releaseErr: any;
 
     try {
       await client.query('BEGIN');
@@ -2752,12 +2804,14 @@ export async function startServer() {
       await client.query('COMMIT');
       res.json({ success: true, message: 'Administrator account deleted and sessions revoked.' });
     } catch (error) {
+      releaseErr = error;
       try {
         await client.query('ROLLBACK');
       } catch {}
       handleDbError(res, error, 'admin:users:delete');
     } finally {
-      client.release();
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   });
 
@@ -2818,6 +2872,7 @@ export async function startServer() {
     }
 
     const client = await pool.connect();
+    let releaseErr: any;
     try {
       await client.query('BEGIN');
       const existing = await client.query('SELECT id, email, role, is_active FROM users WHERE id = $1 FOR UPDATE', [id]);
@@ -2845,12 +2900,14 @@ export async function startServer() {
       await client.query('COMMIT');
       res.json(updateRes.rows[0]);
     } catch (error) {
+      releaseErr = error;
       try {
         await client.query('ROLLBACK');
       } catch {}
       handleDbError(res, error, 'admin:registered-users:update');
     } finally {
-      client.release();
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   });
 
@@ -4152,17 +4209,16 @@ export async function startServer() {
 
   app.post('/api/bookings', async (req, res) => {
     const client = await pool.connect();
+    let releaseErr: any;
     try {
       const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
       const rl = await checkPersistentRateLimit('booking_ip_' + clientIp, 10, 60);
       if (!rl.allowed) {
-        client.release();
         return res.status(429).json({ error: 'Too many booking requests. Please wait a minute before trying again.' });
       }
 
       const booking = req.body;
       if (!booking || typeof booking !== 'object') {
-        client.release();
         return res.status(400).json({ error: 'Valid booking information is required.' });
       }
 
@@ -4170,18 +4226,15 @@ export async function startServer() {
       const bTime = String(booking.booking_time || booking.time || '').trim().slice(0, 30);
 
       if (!bDate || !bTime) {
-        client.release();
         return res.status(400).json({ error: 'Valid booking date and time slot are required.' });
       }
 
       // Validate date format YYYY-MM-DD
       if (!/^\d{4}-\d{2}-\d{2}$/.test(bDate)) {
-        client.release();
         return res.status(400).json({ error: 'Booking date must be in YYYY-MM-DD format.' });
       }
       const parsedDate = new Date(bDate);
       if (isNaN(parsedDate.getTime())) {
-        client.release();
         return res.status(400).json({ error: 'Booking date is invalid.' });
       }
 
@@ -4209,7 +4262,6 @@ export async function startServer() {
         );
       } catch (dbErr: any) {
         await client.query('ROLLBACK');
-        client.release();
         if (dbErr.code === '23505') { // Unique constraint violation on (booking_date, booking_time)
           return res.status(409).json({ error: 'Time slot already taken. Please choose another one.' });
         }
@@ -4231,15 +4283,17 @@ export async function startServer() {
       );
 
       await client.query('COMMIT');
-      client.release();
 
       res.status(201).json({ success: true, id: bookingId });
     } catch (error) {
+      releaseErr = error;
       try {
         await client.query('ROLLBACK');
       } catch {}
-      client.release();
       handleDbError(res, error, 'booking:save');
+    } finally {
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   });
 
@@ -6176,10 +6230,14 @@ Provide the output strictly as a valid JSON array of 3 strings.`;
   });
 
   app.get('/api/db-health', async (req, res) => {
+    const neonDiag = getNeonDiagnostics();
+    const startMs = Date.now();
     try {
       await pool.query('SELECT 1');
-      res.json({ 
+      res.json({
         status: 'connected',
+        latencyMs: Date.now() - startMs,
+        neon: neonDiag,
         api_connections: {
           gemini: !!process.env.GEMINI_API_KEY,
           locationiq: !!process.env.LOCATIONIQ_API_KEY,
@@ -6188,7 +6246,16 @@ Provide the output strictly as a valid JSON array of 3 strings.`;
         }
       });
     } catch (error) {
-      handleDbError(res, error, 'health-check');
+      console.error(
+        `[DB Health Check Failed] host=${neonDiag.host || 'unknown'} pooled=${neonDiag.isPooledEndpoint} latencyMs=${Date.now() - startMs}:`,
+        sanitizeDbErrorMessage(error)
+      );
+      res.status(503).json({
+        status: 'disconnected',
+        latencyMs: Date.now() - startMs,
+        neon: neonDiag,
+        error: 'Database connectivity check failed'
+      });
     }
   });
 
@@ -6651,8 +6718,20 @@ Provide the output strictly as a valid JSON array of 3 strings.`;
     }
 
     if (process.env.VERCEL !== '1') {
+      if (process.env.DATABASE_URL && process.env.AVARTAH_SKIP_DB_INIT !== '1') {
+        try {
+          await ensureDbInitialized();
+        } catch (err: any) {
+          console.warn('[Neon DB Boot Warning]: Database connection could not be established immediately:', sanitizeDbErrorMessage(err));
+        }
+      }
       app.listen(PORT, '0.0.0.0', () => {
         console.log(`[Backend] Server running on http://0.0.0.0:${PORT}`);
+      });
+    } else if (process.env.DATABASE_URL && process.env.AVARTAH_SKIP_DB_INIT !== '1') {
+      // Trigger non-blocking warm-up after routes are registered; API barrier ensures completion before DB routes execute.
+      void ensureDbInitialized().catch((err: any) => {
+        console.warn('[Neon DB Boot Warning]: Initial warm-up deferred:', sanitizeDbErrorMessage(err));
       });
     }
   }

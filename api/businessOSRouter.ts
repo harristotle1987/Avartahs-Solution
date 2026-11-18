@@ -224,6 +224,7 @@ businessOSRouter.post('/register', requireUserAuth, async (req: Request, res: Re
     const preset = INDUSTRY_PRESETS[selectedIndustry] || INDUSTRY_PRESETS.other;
 
     const client = await pool.connect();
+    let releaseErr: any;
     try {
       await client.query('BEGIN');
 
@@ -273,10 +274,12 @@ businessOSRouter.post('/register', requireUserAuth, async (req: Request, res: Re
         redirect: `/business-os/onboarding?tenant=${tenantId}`
       });
     } catch (err: any) {
-      await client.query('ROLLBACK');
+      releaseErr = err;
+      try { await client.query('ROLLBACK'); } catch {}
       throw err;
     } finally {
-      client.release();
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   } catch (err: any) {
     sendSafeRouterError(res, err, 'business-os');
@@ -465,6 +468,7 @@ businessOSRouter.post('/:tenantId/onboarding', requireUserAuth, requireTenantMem
     } = req.body;
 
     const client = await pool.connect();
+    let releaseErr: any;
     try {
       await client.query('BEGIN');
 
@@ -505,10 +509,12 @@ businessOSRouter.post('/:tenantId/onboarding', requireUserAuth, requireTenantMem
       const updatedTenant = await pool.query('SELECT * FROM tenants WHERE id = $1', [tenantId]);
       res.json({ success: true, tenant: updatedTenant.rows[0] });
     } catch (err: any) {
-      await client.query('ROLLBACK');
+      releaseErr = err;
+      try { await client.query('ROLLBACK'); } catch {}
       throw err;
     } finally {
-      client.release();
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   } catch (err: any) {
     sendSafeRouterError(res, err, 'business-os');
@@ -965,6 +971,7 @@ businessOSRouter.post('/:tenantId/quotations', requireUserAuth, requireTenantMem
     const totalAmount = Math.max(0, subtotal + finalTax - finalDiscount);
 
     const client = await pool.connect();
+    let releaseErr: any;
     try {
       await client.query('BEGIN');
 
@@ -999,10 +1006,12 @@ businessOSRouter.post('/:tenantId/quotations', requireUserAuth, requireTenantMem
 
       res.status(201).json(qRes.rows[0]);
     } catch (err: any) {
-      await client.query('ROLLBACK');
+      releaseErr = err;
+      try { await client.query('ROLLBACK'); } catch {}
       throw err;
     } finally {
-      client.release();
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   } catch (err: any) {
     sendSafeRouterError(res, err, 'business-os');
@@ -1027,6 +1036,7 @@ businessOSRouter.post('/:tenantId/quotations/:quotationId/convert', requireUserA
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
 
     const client = await pool.connect();
+    let releaseErr: any;
     try {
       await client.query('BEGIN');
 
@@ -1066,10 +1076,12 @@ businessOSRouter.post('/:tenantId/quotations/:quotationId/convert', requireUserA
 
       res.json(invRes.rows[0]);
     } catch (err: any) {
-      await client.query('ROLLBACK');
+      releaseErr = err;
+      try { await client.query('ROLLBACK'); } catch {}
       throw err;
     } finally {
-      client.release();
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   } catch (err: any) {
     sendSafeRouterError(res, err, 'business-os');
@@ -1202,6 +1214,7 @@ businessOSRouter.post('/:tenantId/invoices', requireUserAuth, requireTenantMembe
     const totalAmount = Math.max(0, subtotal + finalTax - finalDiscount);
 
     const client = await pool.connect();
+    let releaseErr: any;
     try {
       await client.query('BEGIN');
 
@@ -1247,10 +1260,12 @@ businessOSRouter.post('/:tenantId/invoices', requireUserAuth, requireTenantMembe
 
       res.status(201).json(invRes.rows[0]);
     } catch (err: any) {
-      await client.query('ROLLBACK');
+      releaseErr = err;
+      try { await client.query('ROLLBACK'); } catch {}
       throw err;
     } finally {
-      client.release();
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   } catch (err: any) {
     sendSafeRouterError(res, err, 'business-os');
@@ -1304,6 +1319,7 @@ businessOSRouter.post('/:tenantId/invoices/:invoiceId/payments', requireUserAuth
     }
 
     const client = await pool.connect();
+    let releaseErr: any;
     try {
       await client.query('BEGIN');
 
@@ -1365,10 +1381,12 @@ businessOSRouter.post('/:tenantId/invoices/:invoiceId/payments', requireUserAuth
         invoice: updatedInv.rows[0]
       });
     } catch (err: any) {
-      await client.query('ROLLBACK');
+      releaseErr = err;
+      try { await client.query('ROLLBACK'); } catch {}
       throw err;
     } finally {
-      client.release();
+      if (releaseErr) client.release(releaseErr);
+      else client.release();
     }
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -1523,6 +1541,7 @@ async function verifyAndActivatePaystackPayment(
 
   const cleanRef = rawReference.trim();
   const client = await pool.connect();
+  let releaseErr: any = undefined;
 
   try {
     await client.query('BEGIN');
@@ -1987,12 +2006,13 @@ async function verifyAndActivatePaystackPayment(
       tenantId
     };
   } catch (err: any) {
+    releaseErr = err;
     try {
       await client.query('ROLLBACK');
     } catch {}
     throw err;
   } finally {
-    client.release();
+    client.release(releaseErr);
   }
 }
 
