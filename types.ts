@@ -289,7 +289,7 @@ export interface ClientProject {
   id: string;
   name: string;
   title?: string;
-  client_user_id?: number | null;
+  client_user_id?: string | number | null;
   client_email: string;
   client_name?: string;
   description?: string;
@@ -299,7 +299,7 @@ export interface ClientProject {
   target_date?: string | null;
   target_end_date?: string | null;
   completed_at?: string | null;
-  assigned_admin_id?: number | null;
+  assigned_admin_id?: string | number | null;
   assigned_admin_name?: string;
   is_archived: boolean;
   created_at: string;

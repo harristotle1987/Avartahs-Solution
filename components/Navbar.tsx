@@ -331,13 +331,60 @@ const Navbar: React.FC = () => {
                     Sign In
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="w-full min-h-[44px] inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400"
-                  >
-                    Sign Out ({user?.email})
-                  </button>
+                  <div className="space-y-1 pt-1">
+                    {isAdmin ? (
+                      <>
+                        <RouterLink
+                          to="/admin/dashboard"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="w-full min-h-[44px] flex items-center justify-between px-2 text-sm font-medium text-slate-700 dark:text-[#F2F1ED] hover:text-[#C58A52] rounded-md transition-colors"
+                        >
+                          <span>Admin Console</span>
+                          <LayoutDashboard size={14} className="text-[#C58A52]" />
+                        </RouterLink>
+                        <RouterLink
+                          to="/jobs"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="w-full min-h-[44px] flex items-center justify-between px-2 text-sm font-medium text-slate-700 dark:text-[#F2F1ED] hover:text-[#C58A52] rounded-md transition-colors"
+                        >
+                          <span>Job Intelligence</span>
+                          <Shield size={14} className="text-[#C58A52]" />
+                        </RouterLink>
+                      </>
+                    ) : (
+                      <RouterLink
+                        to="/client/projects"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="w-full min-h-[44px] flex items-center justify-between px-2 text-sm font-medium text-slate-700 dark:text-[#F2F1ED] hover:text-[#C58A52] rounded-md transition-colors"
+                      >
+                        <span>Client Delivery Hub</span>
+                        <LayoutDashboard size={14} className="text-[#C58A52]" />
+                      </RouterLink>
+                    )}
+                    <RouterLink
+                      to="/business-os"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="w-full min-h-[44px] flex items-center justify-between px-2 text-sm font-medium text-slate-700 dark:text-[#F2F1ED] hover:text-[#C58A52] rounded-md transition-colors"
+                    >
+                      <span>Business OS</span>
+                      <ArrowUpRight size={14} className="text-slate-400" />
+                    </RouterLink>
+                    <RouterLink
+                      to="/blog"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="w-full min-h-[44px] flex items-center justify-between px-2 text-sm font-medium text-slate-700 dark:text-[#F2F1ED] hover:text-[#C58A52] rounded-md transition-colors"
+                    >
+                      <span>Research & Articles</span>
+                      <ArrowUpRight size={14} className="text-slate-400" />
+                    </RouterLink>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full min-h-[44px] inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400"
+                    >
+                      Sign Out ({user?.email})
+                    </button>
+                  </div>
                 )}
               </div>
             </nav>

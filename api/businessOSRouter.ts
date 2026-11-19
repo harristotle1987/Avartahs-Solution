@@ -6,6 +6,7 @@ import {
   requireTenantMembership,
   checkPlanLimits,
   logTenantAudit,
+  setNoStoreHeaders,
   SessionData
 } from '../lib/serverAuth.js';
 import {
@@ -18,6 +19,13 @@ import {
 } from '../lib/paystack.js';
 
 export const businessOSRouter = Router();
+
+businessOSRouter.use((req: Request, res: Response, next) => {
+  if (req.path !== '/plans') {
+    setNoStoreHeaders(res);
+  }
+  next();
+});
 
 function sendSafeRouterError(res: Response, err: any, context: string) {
   const ref = 'oserr_' + crypto.randomBytes(6).toString('hex');
@@ -562,7 +570,7 @@ businessOSRouter.get('/:tenantId/dashboard', requireUserAuth, requireTenantMembe
       SELECT p.id, p.amount, p.payment_method, p.payment_date as date, p.receipt_number,
              i.invoice_number, i.customer_name
       FROM payments p
-      JOIN invoices i ON p.invoice_id = i.id
+      JOIN invoices i ON p.invoice_id = i.id AND i.tenant_id = $1
       WHERE p.tenant_id = $1
       ORDER BY p.payment_date DESC
       LIMIT 5
@@ -901,7 +909,30 @@ businessOSRouter.get('/:tenantId/quotations', requireUserAuth, requireTenantMemb
   }
 });
 
-// 18. POST /api/os/:tenantId/quotations (Cross-tenant catalog item validation, Quota-checked)
+// 17b. GET /api/os/:tenantId/quotations/:quotationId (Strict tenant-scoped quotation lookup)
+businessOSRouter.get('/:tenantId/quotations/:quotationId', requireUserAuth, requireTenantMembership('staff'), async (req: Request, res: Response) => {
+  try {
+    const { tenantId, quotationId } = req.params;
+    const qRes = await pool.query(`
+      SELECT q.*,
+             COALESCE(json_agg(qi.*) FILTER (WHERE qi.id IS NOT NULL), '[]'::json) as items
+      FROM quotations q
+      LEFT JOIN quotation_items qi ON q.id = qi.quotation_id
+      WHERE q.id = $1 AND q.tenant_id = $2
+      GROUP BY q.id
+    `, [quotationId, tenantId]);
+
+    if (!qRes.rows.length) {
+      return res.status(404).json({ error: 'Quotation not found in this business organization' });
+    }
+
+    res.json(qRes.rows[0]);
+  } catch (err: any) {
+    sendSafeRouterError(res, err, 'business-os');
+  }
+});
+
+// 18. POST /api/os/:tenantId/quotations (Cross-tenant catalog & customer validation, Quota-checked)
 businessOSRouter.post('/:tenantId/quotations', requireUserAuth, requireTenantMembership('staff'), async (req: Request, res: Response) => {
   try {
     const { tenantId } = req.params;
@@ -923,13 +954,16 @@ businessOSRouter.post('/:tenantId/quotations', requireUserAuth, requireTenantMem
     let resolvedCustomerEmail = customer_email;
     let resolvedCustomerPhone = customer_phone;
 
-    if (customer_id && (!resolvedCustomerName || !resolvedCustomerName.trim())) {
-      const custRes = await pool.query('SELECT name, email, phone FROM customers WHERE id = $1 AND tenant_id = $2', [customer_id, tenantId]);
-      if (custRes.rows.length > 0) {
-        resolvedCustomerName = custRes.rows[0].name;
-        resolvedCustomerEmail = resolvedCustomerEmail || custRes.rows[0].email;
-        resolvedCustomerPhone = resolvedCustomerPhone || custRes.rows[0].phone;
+    if (customer_id) {
+      const custRes = await pool.query('SELECT id, name, email, phone FROM customers WHERE id = $1 AND tenant_id = $2', [customer_id, tenantId]);
+      if (custRes.rows.length === 0) {
+        return res.status(400).json({ error: `Security Violation: Customer ${customer_id} does not belong to this business organization.` });
       }
+      if (!resolvedCustomerName || !resolvedCustomerName.trim()) {
+        resolvedCustomerName = custRes.rows[0].name;
+      }
+      resolvedCustomerEmail = resolvedCustomerEmail || custRes.rows[0].email;
+      resolvedCustomerPhone = resolvedCustomerPhone || custRes.rows[0].phone;
     }
 
     if (!resolvedCustomerName || !resolvedCustomerName.trim()) {
@@ -1058,7 +1092,7 @@ businessOSRouter.post('/:tenantId/quotations/:quotationId/convert', requireUserA
         `, [`ii_${crypto.randomUUID().slice(0, 8)}`, invoiceId, item.catalog_item_id, item.title, item.quantity, item.unit_price, item.total_price]);
       }
 
-      await client.query('UPDATE quotations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', ['CONVERTED', quotationId]);
+      await client.query('UPDATE quotations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND tenant_id = $3', ['CONVERTED', quotationId, tenantId]);
 
       // If customer exists, update outstanding balance
       if (qte.customer_id) {
@@ -1066,8 +1100,8 @@ businessOSRouter.post('/:tenantId/quotations/:quotationId/convert', requireUserA
           UPDATE customers
           SET outstanding_balance = outstanding_balance + $1,
               updated_at = CURRENT_TIMESTAMP
-          WHERE id = $2
-        `, [qte.total_amount, qte.customer_id]);
+          WHERE id = $2 AND tenant_id = $3
+        `, [qte.total_amount, qte.customer_id, tenantId]);
       }
 
       await client.query('COMMIT');
@@ -1166,13 +1200,16 @@ businessOSRouter.post('/:tenantId/invoices', requireUserAuth, requireTenantMembe
     let resolvedCustomerEmail = customer_email;
     let resolvedCustomerPhone = customer_phone;
 
-    if (customer_id && (!resolvedCustomerName || !resolvedCustomerName.trim())) {
-      const custRes = await pool.query('SELECT name, email, phone FROM customers WHERE id = $1 AND tenant_id = $2', [customer_id, tenantId]);
-      if (custRes.rows.length > 0) {
-        resolvedCustomerName = custRes.rows[0].name;
-        resolvedCustomerEmail = resolvedCustomerEmail || custRes.rows[0].email;
-        resolvedCustomerPhone = resolvedCustomerPhone || custRes.rows[0].phone;
+    if (customer_id) {
+      const custRes = await pool.query('SELECT id, name, email, phone FROM customers WHERE id = $1 AND tenant_id = $2', [customer_id, tenantId]);
+      if (custRes.rows.length === 0) {
+        return res.status(400).json({ error: `Security Violation: Customer ${customer_id} does not belong to this business organization.` });
       }
+      if (!resolvedCustomerName || !resolvedCustomerName.trim()) {
+        resolvedCustomerName = custRes.rows[0].name;
+      }
+      resolvedCustomerEmail = resolvedCustomerEmail || custRes.rows[0].email;
+      resolvedCustomerPhone = resolvedCustomerPhone || custRes.rows[0].phone;
     }
 
     if (!resolvedCustomerName || !resolvedCustomerName.trim()) {
@@ -1357,9 +1394,9 @@ businessOSRouter.post('/:tenantId/invoices/:invoiceId/payments', requireUserAuth
             balance_due = $2,
             status = $3,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $4
+        WHERE id = $4 AND tenant_id = $5
         RETURNING *
-      `, [newAmountPaid, newBalanceDue, newStatus, invoiceId]);
+      `, [newAmountPaid, newBalanceDue, newStatus, invoiceId, tenantId]);
 
       // Update customer total_spent and balance
       if (inv.customer_id) {

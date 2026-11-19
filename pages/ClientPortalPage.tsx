@@ -6,14 +6,14 @@ import {
   ExternalLink, Calendar, MessageSquare, RefreshCw, 
   Loader2, ArrowRight, Shield, FileText, X
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { 
-  ClientProject, ProjectMilestone, ProjectDeliverable, ProjectActivity,
-  ProjectStatus, MilestoneStatus
+  ClientProject, ProjectStatus
 } from '../types';
 import { 
   getClientDeliveryProjects, getClientDeliveryProjectDetail, submitClientFeedback 
 } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -27,6 +27,10 @@ const STATUS_TEXT: Record<ProjectStatus, { text: string; color: string }> = {
 };
 
 export const ClientPortalPage: React.FC = () => {
+  const { user } = useAuth();
+  const location = useLocation();
+  const routeState = (location.state || {}) as { adminAccessDenied?: boolean };
+  const [showAccessBanner, setShowAccessBanner] = useState<boolean>(!!routeState.adminAccessDenied);
   const [projects, setProjects] = useState<ClientProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [activeProject, setActiveProject] = useState<ClientProject | null>(null);
@@ -47,6 +51,12 @@ export const ClientPortalPage: React.FC = () => {
     setTimeout(() => setToast(null), 3500);
   };
 
+  useEffect(() => {
+    if (routeState.adminAccessDenied) {
+      setShowAccessBanner(true);
+    }
+  }, [routeState.adminAccessDenied]);
+
   const fetchClientProjects = async () => {
     setLoading(true);
     setError(null);
@@ -60,6 +70,7 @@ export const ClientPortalPage: React.FC = () => {
         setSelectedProjectId(firstId);
         await loadProjectDetail(firstId);
       } else {
+        setSelectedProjectId(null);
         setActiveProject(null);
       }
     } catch (err: any) {
@@ -83,8 +94,11 @@ export const ClientPortalPage: React.FC = () => {
   };
 
   useEffect(() => {
+    setProjects([]);
+    setSelectedProjectId(null);
+    setActiveProject(null);
     fetchClientProjects();
-  }, []);
+  }, [user?.email]);
 
   const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,18 +149,43 @@ export const ClientPortalPage: React.FC = () => {
       </AnimatePresence>
 
       <main className="pt-28 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        {showAccessBanner && (
+          <div className="mb-6 p-3.5 rounded-lg border border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 flex items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>Administrator console access is restricted. You are viewing your authorized client workspace.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAccessBanner(false)}
+              className="p-1 hover:opacity-75"
+              aria-label="Dismiss notice"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Workspace Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 mb-8 border-b border-slate-200 dark:border-[#30363B]">
           <div>
             <div className="text-xs font-semibold text-[#C58A52] uppercase tracking-wider mb-1">
-              Client Delivery Portal
+              Client Delivery Portal{user?.email ? ` · ${user.email}` : ''}
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-[#F2F1ED]">
               Project Sprints & Deliverables
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              to="/business-os/dashboard"
+              className="px-3.5 py-2 rounded-lg border border-slate-200 dark:border-[#30363B] text-slate-700 dark:text-[#F2F1ED] hover:border-[#C58A52] text-xs font-semibold transition-colors inline-flex items-center gap-1.5"
+            >
+              <FileText size={13} className="text-[#C58A52]" />
+              <span>Quotations & Invoices</span>
+            </Link>
+
             <button
               onClick={fetchClientProjects}
               className="p-2 rounded-lg border border-slate-200 dark:border-[#30363B] text-slate-600 dark:text-[#A3A9AF] hover:text-slate-900 dark:hover:text-[#F2F1ED] transition-colors"
@@ -206,6 +245,8 @@ export const ClientPortalPage: React.FC = () => {
               {projects.map((p, pIdx) => {
                 const isSelected = p.id === selectedProjectId;
                 const statusMeta = STATUS_TEXT[p.status as ProjectStatus] || { text: p.status, color: 'text-slate-400' };
+                const projectTitle = p.name || p.title || 'Delivery Project';
+                const targetDate = p.target_date || p.target_end_date;
 
                 return (
                   <button
@@ -218,13 +259,13 @@ export const ClientPortalPage: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between text-xs mb-1.5">
-                      <span className="font-semibold text-slate-900 dark:text-[#F2F1ED] truncate max-w-[200px]">{p.title}</span>
+                      <span className="font-semibold text-slate-900 dark:text-[#F2F1ED] truncate max-w-[200px]">{projectTitle}</span>
                       <span className={`text-[11px] font-medium ${statusMeta.color}`}>{statusMeta.text}</span>
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-[#747C84] font-mono tabular-nums">
                       <span>Progress: {p.progress_percentage || 0}%</span>
-                      <span>Target: {p.target_end_date ? new Date(p.target_end_date).toLocaleDateString() : 'TBD'}</span>
+                      <span>Target: {targetDate ? new Date(targetDate).toLocaleDateString() : 'TBD'}</span>
                     </div>
 
                     {/* Progress Bar */}
@@ -253,7 +294,7 @@ export const ClientPortalPage: React.FC = () => {
                   <div className="p-6 rounded-lg border border-slate-200 dark:border-[#30363B] bg-white dark:bg-[#171A1D]">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                       <h2 className="text-xl font-bold text-slate-900 dark:text-[#F2F1ED]">
-                        {activeProject.title}
+                        {activeProject.name || activeProject.title}
                       </h2>
                       <div className="text-xs text-[#C58A52] font-semibold">
                         {activeProject.status}
@@ -281,7 +322,9 @@ export const ClientPortalPage: React.FC = () => {
                       <div>
                         <div className="text-slate-400 dark:text-[#747C84] text-[11px]">Target Launch</div>
                         <div className="font-bold text-slate-900 dark:text-[#F2F1ED] mt-0.5">
-                          {activeProject.target_end_date ? new Date(activeProject.target_end_date).toLocaleDateString() : 'Active Sprint'}
+                          {(activeProject.target_date || activeProject.target_end_date)
+                            ? new Date(activeProject.target_date || activeProject.target_end_date || '').toLocaleDateString()
+                            : 'Active Sprint'}
                         </div>
                       </div>
                     </div>
@@ -340,32 +383,66 @@ export const ClientPortalPage: React.FC = () => {
                       <p className="text-xs text-slate-400 dark:text-[#747C84]">Deliverables will appear here as each sprint milestone completes verification.</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {activeProject.deliverables.map((deliv, dIdx) => (
-                          <div 
-                            key={`portal-deliv-${deliv.id || 'deliv'}-${dIdx}`}
-                            className="p-3.5 rounded-md bg-slate-50 dark:bg-[#111315] border border-slate-100 dark:border-[#30363B]/60 text-xs flex flex-col justify-between"
-                          >
-                            <div>
-                              <div className="font-semibold text-slate-900 dark:text-[#F2F1ED] mb-1">{deliv.title}</div>
-                              {deliv.description && (
-                                <p className="text-slate-500 dark:text-[#747C84] text-[11px] mb-3">{deliv.description}</p>
-                              )}
-                            </div>
+                        {activeProject.deliverables.map((deliv, dIdx) => {
+                          const deliverableKind = deliv.type || deliv.deliverable_type || 'Asset';
+                          const deliverableUrl = deliv.resource_url || deliv.asset_url;
+                          return (
+                            <div 
+                              key={`portal-deliv-${deliv.id || 'deliv'}-${dIdx}`}
+                              className="p-3.5 rounded-md bg-slate-50 dark:bg-[#111315] border border-slate-100 dark:border-[#30363B]/60 text-xs flex flex-col justify-between"
+                            >
+                              <div>
+                                <div className="font-semibold text-slate-900 dark:text-[#F2F1ED] mb-1">{deliv.title}</div>
+                                {deliv.description && (
+                                  <p className="text-slate-500 dark:text-[#747C84] text-[11px] mb-3">{deliv.description}</p>
+                                )}
+                              </div>
 
-                            <div className="pt-2 border-t border-slate-100 dark:border-[#30363B] flex items-center justify-between text-[11px]">
-                              <span className="text-slate-400 dark:text-[#747C84] uppercase font-mono">{deliv.deliverable_type || 'Asset'}</span>
-                              {deliv.asset_url && (
-                                <a
-                                  href={deliv.asset_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-[#C58A52] hover:underline font-medium"
-                                >
-                                  <span>Inspect Deliverable</span>
-                                  <ExternalLink size={11} />
-                                </a>
-                              )}
+                              <div className="pt-2 border-t border-slate-100 dark:border-[#30363B] flex items-center justify-between text-[11px]">
+                                <span className="text-slate-400 dark:text-[#747C84] uppercase font-mono">{deliverableKind}</span>
+                                {deliverableUrl && (
+                                  <a
+                                    href={deliverableUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[#C58A52] hover:underline font-medium"
+                                  >
+                                    <span>Inspect Deliverable</span>
+                                    <ExternalLink size={11} />
+                                  </a>
+                                )}
+                              </div>
                             </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Client-Visible Activity Updates */}
+                  <div className="p-6 rounded-lg border border-slate-200 dark:border-[#30363B] bg-white dark:bg-[#171A1D]">
+                    <h3 className="text-xs font-semibold text-slate-900 dark:text-[#F2F1ED] uppercase tracking-wider mb-4">
+                      Delivery Updates ({activeProject.activities?.length || 0})
+                    </h3>
+
+                    {(!activeProject.activities || activeProject.activities.length === 0) ? (
+                      <p className="text-xs text-slate-400 dark:text-[#747C84]">No client-visible sprint updates posted yet.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {activeProject.activities.map((act, aIdx) => (
+                          <div
+                            key={`portal-act-${act.id || 'act'}-${aIdx}`}
+                            className="p-3.5 rounded-md bg-slate-50 dark:bg-[#111315] border border-slate-100 dark:border-[#30363B]/60 text-xs"
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1 text-[11px] text-slate-400 dark:text-[#747C84]">
+                              <span className="font-semibold text-[#C58A52]">
+                                {act.author_role === 'admin' ? 'Delivery Team' : 'You'}
+                              </span>
+                              <span className="font-mono tabular-nums">
+                                {act.created_at ? new Date(act.created_at).toLocaleString() : ''}
+                              </span>
+                            </div>
+                            <p className="text-slate-700 dark:text-[#F2F1ED] leading-relaxed">{act.message}</p>
                           </div>
                         ))}
                       </div>

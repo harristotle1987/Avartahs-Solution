@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Tenant, SubscriptionPlan } from '../types';
 import { businessOSApi } from '../lib/businessOSApi';
+import { useAuth } from './AuthContext';
 
 interface BusinessOSContextType {
   tenants: Tenant[];
@@ -18,11 +19,13 @@ interface BusinessOSContextType {
 const BusinessOSContext = createContext<BusinessOSContextType | undefined>(undefined);
 
 export const BusinessOSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isVerifying, user } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [activeTenant, setActiveTenantState] = useState<Tenant | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const lastAuthEmailRef = useRef<string | null>(null);
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -34,13 +37,23 @@ export const BusinessOSProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const refreshTenants = useCallback(async () => {
+    if (!isAuthenticated) {
+      setTenants([]);
+      setActiveTenantState(null);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('avartah_active_tenant_id');
+      }
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
       const data = await businessOSApi.getTenants();
       setTenants(data);
 
-      const savedId = localStorage.getItem('avartah_active_tenant_id');
+      const savedId = typeof localStorage !== 'undefined' ? localStorage.getItem('avartah_active_tenant_id') : null;
       let current = data.find(t => t.id === savedId);
 
       if (!current && data.length > 0) {
@@ -51,19 +64,24 @@ export const BusinessOSProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         // Fetch full tenant details with settings
         const fullTenant = await businessOSApi.getTenant(current.id);
         setActiveTenantState(fullTenant);
-        localStorage.setItem('avartah_active_tenant_id', fullTenant.id);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('avartah_active_tenant_id', fullTenant.id);
+        }
       } else {
         setActiveTenantState(null);
-        localStorage.removeItem('avartah_active_tenant_id');
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('avartah_active_tenant_id');
+        }
       }
     } catch (err: any) {
       console.warn('Tenant session initialization:', err.message || err);
       // If unauthenticated or no tenants, set activeTenantState to null safely
+      setTenants([]);
       setActiveTenantState(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const refreshActiveTenant = useCallback(async () => {
     if (!activeTenant) return;
@@ -77,14 +95,18 @@ export const BusinessOSProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const setActiveTenant = (tenant: Tenant) => {
     setActiveTenantState(tenant);
-    localStorage.setItem('avartah_active_tenant_id', tenant.id);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('avartah_active_tenant_id', tenant.id);
+    }
   };
 
   const selectTenantById = async (tenantId: string) => {
     try {
       const full = await businessOSApi.getTenant(tenantId);
       setActiveTenantState(full);
-      localStorage.setItem('avartah_active_tenant_id', full.id);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('avartah_active_tenant_id', full.id);
+      }
     } catch (err) {
       console.error('Error selecting tenant:', err);
     }
@@ -92,8 +114,34 @@ export const BusinessOSProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   useEffect(() => {
     fetchPlans();
+  }, [fetchPlans]);
+
+  useEffect(() => {
+    if (isVerifying) return;
+
+    const currentEmail = (user?.email || '').toLowerCase() || null;
+    if (!isAuthenticated) {
+      lastAuthEmailRef.current = null;
+      setTenants([]);
+      setActiveTenantState(null);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('avartah_active_tenant_id');
+      }
+      setIsLoading(false);
+      return;
+    }
+
+    if (lastAuthEmailRef.current && currentEmail && lastAuthEmailRef.current !== currentEmail) {
+      setTenants([]);
+      setActiveTenantState(null);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('avartah_active_tenant_id');
+      }
+    }
+
+    lastAuthEmailRef.current = currentEmail;
     refreshTenants();
-  }, [fetchPlans, refreshTenants]);
+  }, [isVerifying, isAuthenticated, user?.email, user?.role, refreshTenants]);
 
   const formatCurrency = (amount: number = 0): string => {
     const currency = activeTenant?.currency || 'NGN';

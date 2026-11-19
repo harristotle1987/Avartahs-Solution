@@ -77,7 +77,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
 
       if (onSuccess) {
-        onSuccess();
+        await onSuccess();
       }
       onClose();
 

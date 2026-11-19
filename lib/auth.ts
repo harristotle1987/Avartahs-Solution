@@ -33,12 +33,23 @@ export const buildAuthHeaders = (extra: Record<string, string> = {}): Record<str
   return headers;
 };
 
+export const clearClientAuthCaches = (): void => {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('avartah_admin_email');
+    localStorage.removeItem('avartah_admin_role');
+    localStorage.removeItem('avartah_session_expiry');
+    localStorage.removeItem('avartah_active_tenant_id');
+  }
+};
+
 export const checkSession = async (): Promise<{ authenticated: boolean; role?: string; email?: string; csrfToken?: string | null }> => {
   try {
     const res = await fetch('/api/auth/session', { 
       credentials: 'include',
+      cache: 'no-store',
       headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
       }
     });
 
@@ -50,18 +61,20 @@ export const checkSession = async (): Promise<{ authenticated: boolean; role?: s
       cachedAuth = !!data.authenticated;
       if (cachedAuth && data.user) {
         if (typeof localStorage !== 'undefined') {
+          const prevEmail = localStorage.getItem('avartah_admin_email');
+          if (prevEmail && data.user.email && prevEmail.toLowerCase() !== String(data.user.email).toLowerCase()) {
+            localStorage.removeItem('avartah_active_tenant_id');
+          }
           if (data.user.role) localStorage.setItem('avartah_admin_role', data.user.role);
           if (data.user.email) localStorage.setItem('avartah_admin_email', data.user.email);
         }
         return { authenticated: true, role: data.user.role, email: data.user.email, csrfToken: getCsrfToken() };
       }
-      if (!cachedAuth && typeof localStorage !== 'undefined') {
-        localStorage.removeItem('avartah_admin_email');
-        localStorage.removeItem('avartah_admin_role');
-      }
+      clearClientAuthCaches();
       return { authenticated: false, csrfToken: getCsrfToken() };
     }
     cachedAuth = false;
+    clearClientAuthCaches();
     return { authenticated: false, csrfToken: getCsrfToken() };
   } catch (e) {
     cachedAuth = false;
@@ -86,6 +99,7 @@ export const login = async (email: string, password: string): Promise<{ success:
       method: 'POST',
       headers: buildAuthHeaders({ 'Accept': 'application/json' }),
       credentials: 'include',
+      cache: 'no-store',
       body: JSON.stringify({ email: email.trim(), password })
     });
 
@@ -99,6 +113,7 @@ export const login = async (email: string, password: string): Promise<{ success:
       throw new Error(errorMsg);
     }
 
+    clearClientAuthCaches();
     if (typeof localStorage !== 'undefined') {
       if (data.user?.email) localStorage.setItem('avartah_admin_email', data.user.email);
       if (data.user?.role) localStorage.setItem('avartah_admin_role', data.user.role);
@@ -118,6 +133,7 @@ export const register = async (email: string, password: string): Promise<{ succe
       method: 'POST',
       headers: buildAuthHeaders({ 'Accept': 'application/json' }),
       credentials: 'include',
+      cache: 'no-store',
       body: JSON.stringify({ email: email.trim(), password })
     });
 
@@ -131,6 +147,7 @@ export const register = async (email: string, password: string): Promise<{ succe
       throw new Error(errorMsg);
     }
 
+    clearClientAuthCaches();
     if (typeof localStorage !== 'undefined') {
       if (data.user?.email) localStorage.setItem('avartah_admin_email', data.user.email);
       if (data.user?.role) localStorage.setItem('avartah_admin_role', data.user.role);
@@ -150,6 +167,7 @@ export const logout = async (): Promise<void> => {
     await fetch('/api/auth/logout', { 
       method: 'POST', 
       credentials: 'include',
+      cache: 'no-store',
       headers: buildAuthHeaders()
     });
   } catch (e) {
@@ -157,11 +175,7 @@ export const logout = async (): Promise<void> => {
   } finally {
     cachedAuth = false;
     cachedCsrfToken = null;
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('avartah_admin_email');
-      localStorage.removeItem('avartah_admin_role');
-      localStorage.removeItem('avartah_session_expiry');
-    }
+    clearClientAuthCaches();
     window.location.href = '/';
   }
 };

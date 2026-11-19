@@ -1091,6 +1091,7 @@ export const getServicesHealth = async (): Promise<Record<string, { status: stri
   try {
     const response = await fetch('/api/services-health', {
       credentials: 'include',
+      cache: 'no-store',
       headers: getAuthHeaders()
     });
     return await response.json();
@@ -1112,6 +1113,7 @@ export const getAdminSummary = async (): Promise<{
   try {
     const response = await fetch('/api/admin/summary', {
       credentials: 'include',
+      cache: 'no-store',
       headers: getAuthHeaders()
     });
     if (response.ok) return await response.json();
@@ -1540,6 +1542,7 @@ export const getDeliveryProjects = async (filters?: {
 
   const response = await fetch(`/api/admin/delivery/projects?${params.toString()}`, {
     credentials: 'include',
+    cache: 'no-store',
     headers: getAuthHeaders()
   });
   if (!response.ok) {
@@ -1572,6 +1575,7 @@ export const createDeliveryProject = async (data: Partial<ClientProject>): Promi
 export const getDeliveryProjectDetail = async (id: string): Promise<ClientProject> => {
   const response = await fetch(`/api/admin/delivery/projects/${id}`, {
     credentials: 'include',
+    cache: 'no-store',
     headers: getAuthHeaders()
   });
   if (!response.ok) {
@@ -1746,6 +1750,7 @@ export const addProjectActivity = async (
 export const getClientDeliveryProjects = async (): Promise<ClientProject[]> => {
   const response = await fetch('/api/client/delivery/projects', {
     credentials: 'include',
+    cache: 'no-store',
     headers: getAuthHeaders()
   });
   if (!response.ok) {
@@ -1761,6 +1766,7 @@ export const getClientDeliveryProjects = async (): Promise<ClientProject[]> => {
 export const getClientDeliveryProjectDetail = async (id: string): Promise<ClientProject> => {
   const response = await fetch(`/api/client/delivery/projects/${id}`, {
     credentials: 'include',
+    cache: 'no-store',
     headers: getAuthHeaders()
   });
   if (!response.ok) {

@@ -1671,6 +1671,79 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_site_analytics_visitor ON site_analytics(visitor_id);
       CREATE INDEX IF NOT EXISTS idx_site_analytics_start ON site_analytics(session_start DESC);
     `
+  },
+  {
+    id: '034_reconcile_user_id_uuid_compatibility',
+    description: 'Non-destructively convert client_projects.client_user_id, client_projects.assigned_admin_id, and payments.user_id to TEXT so both UUID and integer user IDs work cleanly',
+    sql: `
+      DO $$
+      DECLARE
+        fk RECORD;
+        col_type TEXT;
+      BEGIN
+        SELECT data_type INTO col_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'client_projects' AND column_name = 'client_user_id';
+
+        IF col_type IS NOT NULL AND col_type NOT IN ('text', 'character varying') THEN
+          FOR fk IN
+            SELECT tc.constraint_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+              ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+            WHERE tc.table_schema = 'public'
+              AND tc.table_name = 'client_projects'
+              AND tc.constraint_type = 'FOREIGN KEY'
+              AND kcu.column_name = 'client_user_id'
+          LOOP
+            EXECUTE format('ALTER TABLE client_projects DROP CONSTRAINT IF EXISTS %I', fk.constraint_name);
+          END LOOP;
+          ALTER TABLE client_projects ALTER COLUMN client_user_id TYPE TEXT USING client_user_id::text;
+        END IF;
+
+        SELECT data_type INTO col_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'client_projects' AND column_name = 'assigned_admin_id';
+
+        IF col_type IS NOT NULL AND col_type NOT IN ('text', 'character varying') THEN
+          FOR fk IN
+            SELECT tc.constraint_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+              ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+            WHERE tc.table_schema = 'public'
+              AND tc.table_name = 'client_projects'
+              AND tc.constraint_type = 'FOREIGN KEY'
+              AND kcu.column_name = 'assigned_admin_id'
+          LOOP
+            EXECUTE format('ALTER TABLE client_projects DROP CONSTRAINT IF EXISTS %I', fk.constraint_name);
+          END LOOP;
+          ALTER TABLE client_projects ALTER COLUMN assigned_admin_id TYPE TEXT USING assigned_admin_id::text;
+        END IF;
+
+        SELECT data_type INTO col_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'payments' AND column_name = 'user_id';
+
+        IF col_type IS NOT NULL AND col_type NOT IN ('text', 'character varying') THEN
+          FOR fk IN
+            SELECT tc.constraint_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+              ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+            WHERE tc.table_schema = 'public'
+              AND tc.table_name = 'payments'
+              AND tc.constraint_type = 'FOREIGN KEY'
+              AND kcu.column_name = 'user_id'
+          LOOP
+            EXECUTE format('ALTER TABLE payments DROP CONSTRAINT IF EXISTS %I', fk.constraint_name);
+          END LOOP;
+          ALTER TABLE payments ALTER COLUMN user_id TYPE TEXT USING user_id::text;
+        END IF;
+      END $$;
+
+      CREATE INDEX IF NOT EXISTS idx_client_projects_user_id ON client_projects(client_user_id);
+    `
   }
 ];
 

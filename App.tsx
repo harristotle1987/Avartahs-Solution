@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -132,28 +132,11 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#111315] text-[#F2F1ED] px-6">
-        <div className="text-center max-w-md bg-[#15191C] border border-red-500/30 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
-          <h2 className="text-2xl font-black uppercase tracking-tight mb-2 text-red-400">Access Denied</h2>
-          <p className="text-xs text-[#A3A9AF] uppercase tracking-widest mb-6">
-            Administrator privileges are strictly required. Your account does not have admin permissions.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Link
-              to="/client/projects"
-              className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-[#F2F1ED] rounded-xl font-black text-xs uppercase tracking-widest transition-all"
-            >
-              Client Portal
-            </Link>
-            <Link
-              to="/"
-              className="px-5 py-2.5 bg-[#C58A52] hover:bg-[#D99B62] text-[#111315] rounded-xl font-black text-xs uppercase tracking-widest transition-all"
-            >
-              Return Home
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Navigate
+        to="/client/projects"
+        replace
+        state={{ adminAccessDenied: true, from: location.pathname }}
+      />
     );
   }
 

@@ -4,7 +4,7 @@ import pool from './neon.js';
 
 export interface SessionData {
   id: string;
-  userId?: number;
+  userId?: string | number;
   email: string;
   role: string;
   createdAt: number;
@@ -20,6 +20,15 @@ export interface TenantMembership {
 
 export const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const COOKIE_NAME = 'admin_session';
+
+export function setNoStoreHeaders(res: Response): void {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    Pragma: 'no-cache',
+    Expires: '0',
+    Vary: 'Cookie, Authorization'
+  });
+}
 
 export class AuthConfigurationError extends Error {
   readonly code = 'AUTH_CONFIGURATION_ERROR';
@@ -213,9 +222,11 @@ export async function validateSession(token: string | undefined): Promise<Sessio
       [payload.email]
     );
 
-    let activeUser = null;
+    let activeUser: any = null;
+    let isAdminAccount = false;
     if (adminRes.rows.length > 0 && adminRes.rows[0].is_active) {
       activeUser = adminRes.rows[0];
+      isAdminAccount = true;
     } else {
       const userRes = await pool.query(
         'SELECT id, email, role, is_active FROM users WHERE LOWER(email) = LOWER($1)',
@@ -230,11 +241,16 @@ export async function validateSession(token: string | undefined): Promise<Sessio
       return null;
     }
 
+    // Strictly derive role from authoritative table: ordinary users in `users` never elevate to 'admin'.
+    const effectiveRole = isAdminAccount
+      ? (activeUser.role || 'admin')
+      : 'user';
+
     return {
       id: payload.sid,
-      userId: activeUser.id,
+      userId: activeUser.id !== undefined && activeUser.id !== null ? activeUser.id : undefined,
       email: activeUser.email,
-      role: activeUser.role || payload.role || 'user',
+      role: effectiveRole,
       createdAt: payload.iat || (payload.exp - SESSION_TTL_MS),
       expiresAt: payload.exp
     };
@@ -264,6 +280,7 @@ export async function revokeSession(token: string | undefined): Promise<void> {
  * Fails closed with 503 if production SESSION_SECRET is missing or weak.
  */
 export async function requireUserAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  setNoStoreHeaders(res);
   try {
     // Always enforce fail-closed secret availability in production before auth proceeds
     if (process.env.NODE_ENV === 'production') {
@@ -304,6 +321,7 @@ export async function requireUserAuth(req: Request, res: Response, next: NextFun
  * Fails closed with 503 if production SESSION_SECRET is missing or weak.
  */
 export async function requireAdminAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  setNoStoreHeaders(res);
   try {
     if (process.env.NODE_ENV === 'production') {
       await getSessionSecret();
@@ -458,7 +476,7 @@ export async function checkPlanLimits(
 
   if (limitType === 'customers') {
     const limit = Number(p.max_customers ?? 30);
-    const countRes = await pool.query('SELECT COUNT(*)::int as count FROM customers WHERE tenant_id = $1', [tenantId]);
+    const countRes = await pool.query('SELECT COUNT(*)::int as count FROM customers WHERE tenant_id = $1', [tid]);
     const current = Number(countRes.rows[0]?.count ?? 0);
     if (current >= limit) {
       return {
@@ -473,7 +491,7 @@ export async function checkPlanLimits(
 
   if (limitType === 'catalog') {
     const limit = Number(p.max_catalog_items ?? 15);
-    const countRes = await pool.query('SELECT COUNT(*)::int as count FROM catalog_items WHERE tenant_id = $1', [tenantId]);
+    const countRes = await pool.query('SELECT COUNT(*)::int as count FROM catalog_items WHERE tenant_id = $1', [tid]);
     const current = Number(countRes.rows[0]?.count ?? 0);
     if (current >= limit) {
       return {
@@ -492,7 +510,7 @@ export async function checkPlanLimits(
       SELECT COUNT(*)::int as count
       FROM invoices
       WHERE tenant_id = $1 AND created_at >= DATE_TRUNC('month', CURRENT_DATE)
-    `, [tenantId]);
+    `, [tid]);
     const current = Number(countRes.rows[0]?.count ?? 0);
     if (current >= limit) {
       return {
@@ -507,7 +525,7 @@ export async function checkPlanLimits(
 
   if (limitType === 'staff') {
     const limit = Number(p.max_staff_seats ?? 1);
-    const countRes = await pool.query('SELECT COUNT(*)::int as count FROM tenant_members WHERE tenant_id = $1 AND is_active = TRUE', [tenantId]);
+    const countRes = await pool.query('SELECT COUNT(*)::int as count FROM tenant_members WHERE tenant_id = $1 AND is_active = TRUE', [tid]);
     const current = Number(countRes.rows[0]?.count ?? 0);
     if (limit < 999999 && current >= limit) {
       return {

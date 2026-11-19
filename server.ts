@@ -59,6 +59,7 @@ import {
   requireAdminAuth,
   requireUserAuth,
   revokeSession,
+  setNoStoreHeaders,
   validateSession,
   type SessionData
 } from './lib/serverAuth.js';
@@ -727,6 +728,30 @@ export async function startServer() {
   const setCacheControl = (res: express.Response, seconds: number = 3600) => {
     res.set('Cache-Control', `public, max-age=${seconds}`);
   };
+
+  // Prevent browser/proxy/CDN caching on all authenticated, privileged, and session routes
+  app.use(
+    [
+      '/api/auth',
+      '/api/admin',
+      '/api/client',
+      '/api/client-projects',
+      '/api/workspaces',
+      '/api/leads',
+      '/api/prospects',
+      '/api/jobs',
+      '/api/proposals',
+      '/api/website-audits',
+      '/api/website-monitors',
+      '/api/ai-assistant',
+      '/api/business-intelligence',
+      '/api/services-health'
+    ],
+    (_req: express.Request, res: express.Response, next: express.NextFunction) => {
+      setNoStoreHeaders(res);
+      next();
+    }
+  );
 
   // --- CSRF TOKEN DOUBLE-SUBMIT PROTECTION MIDDLEWARE ---
   // Generates and refreshes an accessible XSRF-TOKEN cookie for browser clients.
@@ -2336,7 +2361,7 @@ export async function startServer() {
 
       await clearLoginFailures(emailHash);
 
-      const role = user.role || (isOrdinary ? 'user' : 'admin');
+      const role = isOrdinary ? 'user' : (user.role || 'admin');
       const sessionToken = await createSession(user.email, role, req);
 
       res.cookie(COOKIE_NAME, sessionToken, getCookieOptions(req));
@@ -2378,7 +2403,7 @@ export async function startServer() {
         return res.json({
           authenticated: true,
           csrfToken,
-          user: { email: session.email, role: session.role }
+          user: { id: session.userId, email: session.email, role: session.role }
         });
       }
       return res.json({ authenticated: false, csrfToken });
@@ -2757,6 +2782,9 @@ export async function startServer() {
       try {
         await client.query('ROLLBACK');
       } catch {}
+      if ((error as any)?.code === '22P02') {
+        return res.status(404).json({ error: 'Administrator account not found' });
+      }
       handleDbError(res, error, 'admin:users:update');
     } finally {
       if (releaseErr) client.release(releaseErr);
@@ -2808,6 +2836,9 @@ export async function startServer() {
       try {
         await client.query('ROLLBACK');
       } catch {}
+      if ((error as any)?.code === '22P02') {
+        return res.status(404).json({ error: 'Administrator account not found' });
+      }
       handleDbError(res, error, 'admin:users:delete');
     } finally {
       if (releaseErr) client.release(releaseErr);
@@ -2904,6 +2935,9 @@ export async function startServer() {
       try {
         await client.query('ROLLBACK');
       } catch {}
+      if ((error as any)?.code === '22P02') {
+        return res.status(404).json({ error: 'Registered user not found' });
+      }
       handleDbError(res, error, 'admin:registered-users:update');
     } finally {
       if (releaseErr) client.release(releaseErr);
@@ -2931,6 +2965,9 @@ export async function startServer() {
         message: 'Active sessions revoked.'
       });
     } catch (error) {
+      if ((error as any)?.code === '22P02') {
+        return res.status(404).json({ error: 'Registered user not found' });
+      }
       handleDbError(res, error, 'admin:registered-users:revoke-sessions');
     }
   });
@@ -3131,9 +3168,16 @@ export async function startServer() {
         'SELECT id, email FROM users WHERE LOWER(email) = LOWER($1)',
         [normalizedEmail]
       );
-      const clientUserId = userRes.rows.length > 0 ? userRes.rows[0].id : null;
+      const clientUserId =
+        userRes.rows.length > 0 && userRes.rows[0].id !== undefined && userRes.rows[0].id !== null
+          ? String(userRes.rows[0].id)
+          : null;
 
       const currentAdmin = (req as any).adminUser;
+      const assignedAdminId =
+        currentAdmin?.userId !== undefined && currentAdmin?.userId !== null
+          ? String(currentAdmin.userId)
+          : null;
       const assignedAdminName = assigned_admin_name || currentAdmin?.email || 'Lead Administrator';
 
       const projectId = `proj_${crypto.randomBytes(8).toString('hex')}`;
@@ -3159,7 +3203,7 @@ export async function startServer() {
         start_date || null,
         target_date || null,
         completedAt,
-        currentAdmin?.userId || null,
+        assignedAdminId,
         assignedAdminName,
       ]);
 
@@ -3282,7 +3326,11 @@ export async function startServer() {
         // Check if matching user exists
         const uRes = await pool.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [normEmail]);
         updates.push(`client_user_id = $${idx++}`);
-        values.push(uRes.rows.length > 0 ? uRes.rows[0].id : null);
+        values.push(
+          uRes.rows.length > 0 && uRes.rows[0].id !== undefined && uRes.rows[0].id !== null
+            ? String(uRes.rows[0].id)
+            : null
+        );
       }
       if (client_name !== undefined) {
         updates.push(`client_name = $${idx++}`);
@@ -3710,9 +3758,27 @@ export async function startServer() {
     try {
       const sessionUser = (req as any).user;
       const clientEmail = (sessionUser.email || '').toLowerCase().trim();
-      const clientUserId = sessionUser.userId || null;
+      const clientUserId =
+        sessionUser.userId !== undefined && sessionUser.userId !== null && String(sessionUser.userId).trim() !== ''
+          ? String(sessionUser.userId).trim()
+          : null;
 
-      const q = "SELECT p.id, p.name, p.client_name, p.client_email, p.description, p.scope, p.status, p.start_date, p.target_date, p.completed_at, p.assigned_admin_name, p.created_at, p.updated_at, COALESCE(m.total_count, 0)::int AS total_milestones, COALESCE(m.completed_count, 0)::int AS completed_milestones FROM client_projects p LEFT JOIN (SELECT project_id, COUNT(*)::int AS total_count, COUNT(*) FILTER (WHERE status = 'Completed')::int AS completed_count FROM project_milestones GROUP BY project_id) m ON m.project_id = p.id WHERE (p.client_user_id = $1 OR LOWER(p.client_email) = $2) AND p.is_archived = FALSE ORDER BY p.created_at DESC";
+      // Strict UUID & integer compatibility + zero admin metadata leakage
+      const q = `
+        SELECT p.id, p.name, p.client_name, p.client_email, p.description, p.scope, p.status,
+               p.start_date, p.target_date, p.completed_at, p.created_at, p.updated_at,
+               COALESCE(m.total_count, 0)::int AS total_milestones,
+               COALESCE(m.completed_count, 0)::int AS completed_milestones
+        FROM client_projects p
+        LEFT JOIN (
+          SELECT project_id, COUNT(*)::int AS total_count, COUNT(*) FILTER (WHERE status = 'Completed')::int AS completed_count
+          FROM project_milestones
+          GROUP BY project_id
+        ) m ON m.project_id = p.id
+        WHERE (($1::text IS NOT NULL AND p.client_user_id::text = $1::text) OR ($2::text <> '' AND LOWER(p.client_email) = $2::text))
+          AND COALESCE(p.is_archived, FALSE) = FALSE
+        ORDER BY p.created_at DESC
+      `;
       const result = await pool.query(q, [clientUserId, clientEmail]);
 
       const projects = result.rows.map(row => {
@@ -3733,17 +3799,30 @@ export async function startServer() {
     }
   });
 
-  // 2. Get specific project detail (STRICT IDOR GUARD: ownership validated in DB query)
+  // 2. Get specific project detail (STRICT IDOR GUARD: ownership validated in DB query, no admin metadata exposed)
   app.get('/api/client/delivery/projects/:id', requireUserAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      if (!id || typeof id !== 'string' || !id.trim()) {
+        return res.status(400).json({ error: 'Invalid project identifier.' });
+      }
       const sessionUser = (req as any).user;
       const clientEmail = (sessionUser.email || '').toLowerCase().trim();
-      const clientUserId = sessionUser.userId || null;
+      const clientUserId =
+        sessionUser.userId !== undefined && sessionUser.userId !== null && String(sessionUser.userId).trim() !== ''
+          ? String(sessionUser.userId).trim()
+          : null;
 
-      // Ownership enforcement: query MUST match client_user_id or client_email
-      const projQ = "SELECT id, name, client_name, client_email, description, scope, status, start_date, target_date, completed_at, assigned_admin_name, created_at, updated_at FROM client_projects WHERE id = $1 AND (client_user_id = $2 OR LOWER(client_email) = $3) AND is_archived = FALSE";
-      const projRes = await pool.query(projQ, [id, clientUserId, clientEmail]);
+      // Ownership enforcement: query MUST match client_user_id or client_email (no admin fields returned)
+      const projQ = `
+        SELECT id, name, client_name, client_email, description, scope, status,
+               start_date, target_date, completed_at, created_at, updated_at
+        FROM client_projects
+        WHERE id = $1
+          AND (($2::text IS NOT NULL AND client_user_id::text = $2::text) OR ($3::text <> '' AND LOWER(client_email) = $3::text))
+          AND COALESCE(is_archived, FALSE) = FALSE
+      `;
+      const projRes = await pool.query(projQ, [id.trim(), clientUserId, clientEmail]);
 
       if (projRes.rows.length === 0) {
         // Return 404 to avoid leaking project existence to unauthorized actors
@@ -3758,9 +3837,9 @@ export async function startServer() {
       const activitiesQ = "SELECT id, project_id, type, message, visibility, author_role, created_at FROM project_activities WHERE project_id = $1 AND visibility = 'client_visible' ORDER BY created_at DESC";
 
       const [milestonesRes, deliverablesRes, activitiesRes] = await Promise.all([
-        pool.query(milestonesQ, [id]),
-        pool.query(deliverablesQ, [id]),
-        pool.query(activitiesQ, [id])
+        pool.query(milestonesQ, [id.trim()]),
+        pool.query(deliverablesQ, [id.trim()]),
+        pool.query(activitiesQ, [id.trim()])
       ]);
 
       const progress = computeMilestoneProgress(milestonesRes.rows);
@@ -3783,10 +3862,17 @@ export async function startServer() {
   app.post('/api/client/delivery/projects/:id/feedback', requireUserAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      if (!id || typeof id !== 'string' || !id.trim()) {
+        return res.status(400).json({ error: 'Invalid project identifier.' });
+      }
+      const projectId = id.trim();
       const { message, type = 'client_feedback', milestone_id } = req.body;
       const sessionUser = (req as any).user;
       const clientEmail = (sessionUser.email || '').toLowerCase().trim();
-      const clientUserId = sessionUser.userId || null;
+      const clientUserId =
+        sessionUser.userId !== undefined && sessionUser.userId !== null && String(sessionUser.userId).trim() !== ''
+          ? String(sessionUser.userId).trim()
+          : null;
 
       if (!message || typeof message !== 'string' || message.trim().length === 0) {
         return res.status(400).json({ error: 'Feedback message is required.' });
@@ -3801,8 +3887,12 @@ export async function startServer() {
 
       // Ownership enforcement
       const projRes = await pool.query(
-        'SELECT id, name, status FROM client_projects WHERE id = $1 AND (client_user_id = $2 OR LOWER(client_email) = $3)',
-        [id, clientUserId, clientEmail]
+        `SELECT id, name, status
+         FROM client_projects
+         WHERE id = $1
+           AND (($2::text IS NOT NULL AND client_user_id::text = $2::text) OR ($3::text <> '' AND LOWER(client_email) = $3::text))
+           AND COALESCE(is_archived, FALSE) = FALSE`,
+        [projectId, clientUserId, clientEmail]
       );
       if (projRes.rows.length === 0) {
         return res.status(404).json({ error: 'Project not found or you do not have permission to submit feedback.' });
@@ -3812,7 +3902,7 @@ export async function startServer() {
       // If milestone_id provided, verify it belongs to this project
       let milestoneTitle = '';
       if (milestone_id) {
-        const mRes = await pool.query('SELECT title FROM project_milestones WHERE id = $1 AND project_id = $2', [milestone_id, id]);
+        const mRes = await pool.query('SELECT title FROM project_milestones WHERE id = $1 AND project_id = $2', [milestone_id, projectId]);
         if (mRes.rows.length > 0) {
           milestoneTitle = mRes.rows[0].title;
         }
@@ -3825,7 +3915,7 @@ export async function startServer() {
 
       await pool.query("INSERT INTO project_activities (id, project_id, type, message, visibility, author_email, author_role, metadata) VALUES ($1, $2, $3, $4, 'client_visible', $5, 'client', $6)", [
         actId,
-        id,
+        projectId,
         normType,
         fullMessage,
         clientEmail,
@@ -3838,7 +3928,7 @@ export async function startServer() {
         updatedStatus = 'Revision Required';
         await pool.query(
           'UPDATE client_projects SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          [updatedStatus, id]
+          [updatedStatus, projectId]
         );
       }
 
@@ -6259,7 +6349,7 @@ Provide the output strictly as a valid JSON array of 3 strings.`;
     }
   });
 
-  app.get('/api/services-health', async (req, res) => {
+  app.get('/api/services-health', requireAdminAuth, async (req, res) => {
     const results: Record<string, { status: string; latency?: number; message?: string }> = {};
 
     // Check LocationIQ
@@ -6509,14 +6599,28 @@ Provide the output strictly as a valid JSON array of 3 strings.`;
   // 3. Client Delivery Workspace
   app.get('/api/client-projects', requireUserAuth, async (req, res) => {
     try {
-      const user = (req as any).user;
-      let query = 'SELECT * FROM client_projects';
-      let values: any[] = [];
-      if (user.role !== 'admin') {
-        query += ' WHERE client_id = $1';
-        values = [user.email];
+      const user = (req as any).user as SessionData;
+      if (user.role === 'admin') {
+        const result = await pool.query('SELECT * FROM client_projects ORDER BY created_at DESC');
+        return res.json(result.rows);
       }
-      const result = await pool.query(query, values);
+
+      const clientEmail = (user.email || '').toLowerCase().trim();
+      const clientUserId =
+        user.userId !== undefined && user.userId !== null && String(user.userId).trim() !== ''
+          ? String(user.userId).trim()
+          : null;
+
+      const result = await pool.query(
+        `SELECT id, name, title, client_name, client_email, description, scope, status,
+                current_milestone, start_date, target_date, completed_at, created_at, updated_at
+         FROM client_projects
+         WHERE (($1::text IS NOT NULL AND client_user_id::text = $1::text)
+                OR ($2::text <> '' AND (LOWER(client_email) = $2::text OR LOWER(client_id) = $2::text)))
+           AND COALESCE(is_archived, FALSE) = FALSE
+         ORDER BY created_at DESC`,
+        [clientUserId, clientEmail]
+      );
       res.json(result.rows);
     } catch (e: any) {
       handleDbError(res, e, 'client-projects:list');

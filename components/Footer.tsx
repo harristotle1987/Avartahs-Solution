@@ -2,9 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { SectionId } from '../types';
 import { ArrowUpRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
+  const { isAdmin } = useAuth();
 
   const navLinks = [
     { name: 'Services', to: `/#${SectionId.Services}` },
@@ -21,7 +23,7 @@ const Footer: React.FC = () => {
     { name: 'Avartah Business OS', to: '/business-os' },
     { name: 'Client Delivery Hub', to: '/client/projects' },
     { name: 'Research & Articles', to: '/blog' },
-    { name: 'Admin Console', to: '/admin/dashboard' },
+    ...(isAdmin ? [{ name: 'Admin Console', to: '/admin/dashboard' }] : []),
   ];
 
   return (
